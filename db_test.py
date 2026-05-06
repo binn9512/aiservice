@@ -8,14 +8,14 @@ def init_db():
     cursor.execute("PRAGMA foreign_keys = ON;")
 
     # 테이블 생성
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id TEXT PRIMARY KEY,
-        favorite_colors TEXT,
-        desired_style TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    # cursor.execute("""
+    # CREATE TABLE IF NOT EXISTS users (
+    #     user_id TEXT PRIMARY KEY,
+    #     favorite_colors TEXT,
+    #     desired_style TEXT,
+    #     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # );
+    # """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS clothes (
@@ -39,18 +39,18 @@ def load_csv_to_db():
     conn = sqlite3.connect('codi_ai.db')
     cursor = conn.cursor()
 
-    # 1. users.csv 읽어서 저장
-    if os.path.exists('users.csv'):
-        with open('users.csv', 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                cursor.execute("""
-                    INSERT OR IGNORE INTO users (user_id, favorite_colors, desired_style)
-                    VALUES (?, ?, ?)
-                """, (row['user_id'], row['favorite_colors'], row['desired_style']))
-        print("👥 사용자 데이터 등록 완료 (users.csv)")
-    else:
-        print("⚠️ users.csv 파일이 없습니다.")
+    # # 1. users.csv 읽어서 저장
+    # if os.path.exists('users.csv'):
+    #     with open('users.csv', 'r', encoding='utf-8-sig') as f:
+    #         reader = csv.DictReader(f)
+    #         for row in reader:
+    #             cursor.execute("""
+    #                 INSERT OR IGNORE INTO users (user_id, favorite_colors, desired_style)
+    #                 VALUES (?, ?, ?)
+    #             """, (row['user_id'], row['favorite_colors'], row['desired_style']))
+    #     print("👥 사용자 데이터 등록 완료 (users.csv)")
+    # else:
+    #     print("⚠️ users.csv 파일이 없습니다.")
 
     # 2. clothes.csv 읽어서 저장
     if os.path.exists('clothes.csv'):
