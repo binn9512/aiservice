@@ -10,7 +10,7 @@ def process_and_save(user_id, image_path):
 if __name__ == "__main__":
     db_test.init_db()
     db_test.load_csv_to_db()
-    process_and_save("user1", "blouse.jpg")
+    process_and_save("user1", "blouse2.png")
     db_test.check_data()
     # # 이미지 경로를 여기에 입력하세요
     # image_path = "jacket.png" 

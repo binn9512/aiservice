@@ -126,12 +126,13 @@ def classify_color(image):
 def classify_style(image):
     """
     CLIP 모델을 사용하여 이미지의 스타일을 분류합니다.
+    점수가 비슷할 경우 최대 2개까지 반환합니다.
     """
     # 스타일 정의
     styles = {
         "캐주얼": "a photo of comfortable everyday basic clothing like a simple t-shirt or hoodie",
         "비즈니스룩": "a photo of business or formal style clothing",
-        "스트릿": "a photo of trendy oversized streetwear with graphic prints or hip-hop style",
+        "페미닌": "a photo of feminine clothing like dresses, skirts, and blouses",
         "빈티지": "a photo of a photo of retro, old-fashioned, or distressed vintage style clothing",
         "미니멀": "a photo of minimal or simple style clothing"
     }
@@ -147,8 +148,22 @@ def classify_style(image):
     logits_per_image = outputs.logits_per_image
     probs = logits_per_image.softmax(dim=1)
     
-    best_idx = probs.argmax().item()
-    return labels[best_idx]
+    # 1. 모든 스타일의 확률과 인덱스를 내림차순으로 정렬
+    # topk(2)를 써서 상위 2개의 확률(top_probs)과 인덱스(top_indices)를 가져옵니다.
+    top_probs, top_indices = torch.topk(probs, 2)
+    
+    top1_prob = top_probs[0][0].item()
+    top2_prob = top_probs[0][1].item()
+    top1_label = labels[top_indices[0][0].item()]
+    top2_label = labels[top_indices[0][1].item()]
+
+    # 2. 점수 차이가 크지 않을 때(예: 0.1 이하) 두 스타일을 합쳐서 반환
+    # 이 수치(0.1)를 조절해서 '얼마나 비슷할 때 두 개를 보여줄지' 결정할 수 있어요.
+    if (top1_prob - top2_prob) < 0.2:
+        return f"{top1_label}, {top2_label}"
+    else:
+        return top1_label
+ 
 
 def analyze_style(image_path: str, output_folder: str = "output"):
     """
