@@ -158,7 +158,7 @@ def classify_style(image):
     top2_label = labels[top_indices[0][1].item()]
 
     # 2. 점수 차이가 크지 않을 때(예: 0.1 이하) 두 스타일을 합쳐서 반환
-    # 이 수치(0.1)를 조절해서 '얼마나 비슷할 때 두 개를 보여줄지' 결정할 수 있어요.
+    # 이 수치를 (예: 0.2) 조절해서 '얼마나 비슷할 때 두 개를 보여줄지' 결정할 수 있어요.
     if (top1_prob - top2_prob) < 0.2:
         return f"{top1_label}, {top2_label}"
     else:
