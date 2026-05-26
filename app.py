@@ -47,22 +47,29 @@ def get_image_path_by_id(clothing_id):
         return None
         
     try:
-        conn = sqlite3.connect('codi_ai.db')
+        # 질문자님의 진짜 DB 연결!
+        conn = sqlite3.connect('codi_v2.db') 
         cursor = conn.cursor()
         
-        # 🔴 중요: 아까 성공했던 테이블과 컬럼 구조(clothes_id)에 맞춰 조회합니다.
         cursor.execute("SELECT processed_image FROM clothes WHERE clothes_id = ?", (clothing_id,))
         row = cursor.fetchone()
         conn.close()
         
         if row and row[0]:
-            return row[0]  # 예: 'output/blouse_no_bg.png' 같은 경로 반환
+            db_path = row[0] # 예: 'output\skirt_no_bg.png'
+            
+            # 🌟 [방금 추가한 마법의 코드] 
+            # 역슬래시(\)를 슬래시(/)로 바꾸고, 앞에 'static/'을 강제로 붙여줍니다!
+            clean_path = db_path.replace('\\', '/')
+            if not clean_path.startswith('static/'):
+                clean_path = 'static/' + clean_path
+                
+            return clean_path  # 프론트엔드가 쓰기 딱 좋은 주소로 변신 완료!
+            
         return None
     except Exception as e:
         print(f"❌ DB 이미지 경로 조회 오류: {e}")
         return None
-
-
 # 💬 4. [추가] 사용자와 챗봇이 대화하고 사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
 def chat_api():
@@ -113,6 +120,136 @@ def chat_api():
             "message": f"코디 생성 처리 중 오류가 발생했습니다. (에러: {e})",
             "images": {}
         })
+
+# 📂 1. 프론트엔드가 "저장할 폴더 목록 보여주게 리스트 좀 줘!" 할 때 보내주는 API
+@app.route('/get-collections', methods=['GET'])
+def get_collections():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        # 일단 테스트용 유저인 'su_ryong'의 폴더 목록을 가져옵니다.
+        cursor.execute("SELECT collection_id, collection_name FROM collections WHERE user_id = 'su_ryong'")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # 프론트엔드가 쓰기 좋게 배열(리스트) 형태로 이쁘게 포장합니다.
+        collection_list = []
+        for row in rows:
+            collection_list.append({
+                "id": row[0],
+                "name": row[1]
+            })
+            
+        return jsonify({"success": True, "collections": collection_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# 💾 2. 프론트엔드가 폴더 고르고 [저장하기] 버튼 최종 클릭했을 때 DB에 인서트하는 API
+@app.route('/save-outfit', methods=['POST'])
+def save_outfit():
+    data = request.json  # 프론트가 보낸 데이터 덩어리 받기
+    
+    user_id = 'su_ryong' # 지금은 로그인 기능이 없으니 임시 고정!
+    collection_id = data.get('collection_id') # 사용자가 선택한 폴더 ID
+    
+    # AI가 추천해줬던 옷들의 진짜 이미지 경로 혹은 ID를 받습니다.
+    images = data.get('images', {})
+    top = images.get('top')
+    bottom = images.get('bottom')
+    outer = images.get('outer')
+    shoes = images.get('shoes')
+    bag = images.get('bag')
+    accessory = images.get('accessory')
+    
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # DB에 사용자가 고른 폴더와 옷 조합을 쏙 집어넣습니다.
+        cursor.execute("""
+            INSERT INTO saved_outfits (user_id, collection_id, top_id, bottom_id, outer_id, shoes_id, bag_id, accessory_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, collection_id, top, bottom, outer, shoes, bag, accessory))
+        
+        conn.commit()
+        conn.close()
+        
+        # 기획서 5번에 있는 "저장 완료 토스트 메시지"를 띄우도록 성공 신호를 보냅니다!
+        return jsonify({"success": True, "message": "코디가 성공적으로 저장되었습니다! ❤️"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"저장 실패 ㅠㅠ 에러: {e}"})      
+
+@app.route('/chat-room/create', methods=['POST'])
+def create_chat_room():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO chat_rooms (user_id, room_title) VALUES ('su_ryong', '새 채팅')")
+        new_room_id = cursor.lastrowid # 방금 만들어진 방 번호
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "room_id": new_room_id, "title": "새 채팅"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}) 
+
+@app.route('/chat-room/pin', methods=['POST'])
+def pin_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        # 현재 고정 상태를 반대로 토글 (0이면 1로, 1이면 0으로)
+        cursor.execute("UPDATE chat_rooms SET is_pinned = NOT is_pinned WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "고정 상태가 변경되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/chat-room/rename', methods=['POST'])
+def rename_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    new_title = data.get('title') # 프론트가 보낸 새 이름
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE chat_rooms SET room_title = ? WHERE room_id = ?", (new_title, room_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "이름이 변경되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/chat-room/archive', methods=['POST'])
+def archive_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE chat_rooms SET is_archived = 1 WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "아카이브에 보관되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/chat-room/delete', methods=['POST'])
+def delete_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM chat_rooms WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "채팅방이 삭제되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
