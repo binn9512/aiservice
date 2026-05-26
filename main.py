@@ -11,6 +11,8 @@ if __name__ == "__main__":
     db_test.init_db()
     db_test.load_csv_to_db()
     process_and_save("user1", "blouse2.png")
+    process_and_save("user1", "pant.png")
+    process_and_save("user1", "skirt.png")
     db_test.check_data()
     # # 이미지 경로를 여기에 입력하세요
     # image_path = "jacket.png" 

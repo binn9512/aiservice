@@ -3,9 +3,9 @@ import csv
 import os
 
 def init_db():
-    conn = sqlite3.connect('codi_ai.db')
+    conn = sqlite3.connect('codi_v2.db')
     cursor = conn.cursor()
-    cursor.execute("PRAGMA foreign_keys = ON;")
+
 
     # 테이블 생성
     # cursor.execute("""
@@ -27,8 +27,7 @@ def init_db():
         processed_image TEXT,
         original_image TEXT,
         analyzed_at TEXT,
-        shop_link TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        shop_link TEXT
     );
     """)
     conn.commit()
@@ -36,7 +35,7 @@ def init_db():
     print("✅ DB 초기화 완료")
 
 def load_csv_to_db():
-    conn = sqlite3.connect('codi_ai.db')
+    conn = sqlite3.connect('codi_v2.db')
     cursor = conn.cursor()
 
     # # 1. users.csv 읽어서 저장
@@ -74,7 +73,7 @@ def insert_clothing_data(user_id, category, style, color, processed_image, origi
     import sqlite3
     from datetime import datetime
     
-    conn = sqlite3.connect('codi_ai.db')
+    conn = sqlite3.connect('codi_v2.db')
     cursor = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -88,7 +87,7 @@ def insert_clothing_data(user_id, category, style, color, processed_image, origi
     print("✅ DB에 새로운 옷 정보가 저장되었습니다!")
 
 def check_data():
-    conn = sqlite3.connect('codi_ai.db')
+    conn = sqlite3.connect('codi_v2.db')
     cursor = conn.cursor()
     
     print("\n--- [현재 DB 데이터 확인] ---")
