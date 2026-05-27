@@ -13,6 +13,7 @@ if __name__ == "__main__":
     process_and_save("user1", "blouse2.png")
     process_and_save("user1", "pant.png")
     process_and_save("user1", "skirt.png")
+    process_and_save("user1", "greenblouse.png")
     db_test.check_data()
     # # 이미지 경로를 여기에 입력하세요
     # image_path = "jacket.png" 
