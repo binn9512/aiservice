@@ -103,7 +103,7 @@ const useRecommendChat = () => {
   try {
     const response =
       await fetch(
-  'http://10.50.103.253:5001/chat',
+        'http://127.0.0.1:5001/chat',
         {
           method: 'POST',
 

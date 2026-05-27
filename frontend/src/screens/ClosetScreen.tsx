@@ -23,7 +23,7 @@ import Ionicons
 from 'react-native-vector-icons/Ionicons';
 
 const API_BASE_URL =
-  'http://10.50.103.253:5001';
+  'http://127.0.0.1:5001';
 
 const categories = [
   '전체',

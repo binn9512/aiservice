@@ -195,7 +195,7 @@ export default function RecommendOutfitDetailScreen() {
         <View style={styles.questionSection}>
 
           <Text style={styles.questionTitle}>
-            AI 추천 질문
+            추천 질문
           </Text>
 
           <TouchableOpacity

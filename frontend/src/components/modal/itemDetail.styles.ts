@@ -58,6 +58,10 @@ export default StyleSheet.create({
     fontSize: 22,
 
     color: '#111111',
+
+    width: 28,
+
+    textAlign: 'center',
   },
 
   mainSection: {
@@ -150,12 +154,6 @@ export default StyleSheet.create({
     color: '#111111',
   },
 
-  moreText: {
-    fontSize: 13,
-
-    color: '#666666',
-  },
-
   similarCard: {
     width: 100,
 
@@ -183,6 +181,38 @@ export default StyleSheet.create({
     marginTop: 6,
   },
 
+  infoRow: {
+    flexDirection: 'row',
+
+    justifyContent:
+      'space-between',
+
+    alignItems: 'center',
+
+    paddingVertical: 14,
+
+    borderBottomWidth: 1,
+
+    borderBottomColor:
+      '#F2F0F1',
+  },
+
+  infoLabel: {
+    fontSize: 14,
+
+    fontWeight: '500',
+
+    color: '#666666',
+  },
+
+  infoValue: {
+    fontSize: 14,
+
+    fontWeight: '600',
+
+    color: '#111111',
+  },
+
   questionTitle: {
     fontSize: 16,
 
@@ -194,37 +224,38 @@ export default StyleSheet.create({
   },
 
   questionChip: {
-  flexDirection: 'row',
+    flexDirection: 'row',
 
-  alignItems: 'center',
+    alignItems: 'center',
 
+    backgroundColor:
+      '#FFF4F8',
 
-  backgroundColor: '#FFF4F8',
+    borderRadius: 999,
 
-  borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
 
-  paddingVertical: 12,
-  paddingHorizontal: 12,
+    marginBottom: 10,
 
-  marginBottom: 10,
+    borderWidth: 1,
 
-  borderWidth: 1,
-  borderColor: '#FFE3EE',
-},
+    borderColor: '#FFE3EE',
+  },
 
-questionIcon: {
-  fontSize: 13,
+  questionIcon: {
+    fontSize: 13,
 
-  marginRight: 6,
-},
+    marginRight: 6,
+  },
 
-questionText: {
-  fontSize: 13,
+  questionText: {
+    fontSize: 13,
 
-  fontWeight: '600',
+    fontWeight: '600',
 
-  color: '#FF5C8A',
-},
+    color: '#FF5C8A',
+  },
 
   closeButton: {
     height: 52,
