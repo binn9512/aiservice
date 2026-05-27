@@ -21,14 +21,14 @@ const useRecommendChat = () => {
     useState(false);
 
   const [chatRooms, setChatRooms] =
-  useState([
-    {
-      id: 1,
-      title: '새 채팅',
-      messages: [initialMessage],
-      pinned: false,
-    },
-  ]);
+    useState([
+      {
+        id: 1,
+        title: '새 채팅',
+        messages: [initialMessage],
+        pinned: false,
+      },
+    ]);
 
   const [currentChatId, setCurrentChatId] =
     useState(1);
@@ -47,163 +47,209 @@ const useRecommendChat = () => {
   ]);
 
   const handleSend = async (
-  text: string,
-) => {
-  console.log(
-    'handleSend:',
-    text,
-  );
+    text: string,
+  ) => {
+    console.log(
+      'handleSend:',
+      text,
+    );
 
-  const trimmedText =
-    text.trim();
+    const trimmedText =
+      text.trim();
 
-  if (!trimmedText) {
-    return;
-  }
+    if (!trimmedText) {
+      return;
+    }
 
-  const userMessage: Message = {
-    id: Date.now(),
+    const userMessage: Message = {
+      id: Date.now(),
 
-    role: 'user',
+      role: 'user',
 
-    text: trimmedText,
-  };
+      text: trimmedText,
+    };
 
-  setChatRooms(prev =>
-    prev.map(room => {
-      if (
-        room.id ===
-        currentChatId
-      ) {
-        return {
-          ...room,
+    setChatRooms(prev =>
+      prev.map(room => {
+        if (
+          room.id ===
+          currentChatId
+        ) {
+          return {
+            ...room,
 
-          title:
-            room.title ===
-            '새 채팅'
-              ? trimmedText.slice(
-                  0,
-                  12,
-                )
-              : room.title,
+            title:
+              room.title ===
+              '새 채팅'
+                ? trimmedText.slice(
+                    0,
+                    12,
+                  )
+                : room.title,
 
-          messages: [
-            ...room.messages,
-            userMessage,
-          ],
-        };
-      }
+            messages: [
+              ...room.messages,
+              userMessage,
+            ],
+          };
+        }
 
-      return room;
-    }),
-  );
+        return room;
+      }),
+    );
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const response =
-      await fetch(
-        'http://127.0.0.1:5001/chat',
-        {
-          method: 'POST',
+    try {
+      const response =
+        await fetch(
+          'http://127.0.0.1:5001/chat',
+          {
+            method: 'POST',
 
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-
-          body: JSON.stringify(
-            {
-              message:
-                trimmedText,
+            headers: {
+              'Content-Type':
+                'application/json',
             },
-          ),
-        },
+
+            body: JSON.stringify(
+              {
+                message:
+                  trimmedText,
+              },
+            ),
+          },
+        );
+
+      console.log(
+        'RESPONSE STATUS:',
+        response.status,
       );
 
-    const data =
-      await response.json();
+      const rawText =
+        await response.text();
 
-    console.log(
-      'AI RESPONSE:',
-      data,
-    );
+      console.log(
+        'RAW RESPONSE:',
+        rawText,
+      );
 
-    const aiMessage: Message =
-      {
-        id: Date.now() + 1,
+      let data;
 
-        role: 'ai',
+      try {
+        data = JSON.parse(
+          rawText,
+        );
+      } catch (parseError) {
 
-        text:
-          data.message ||
-          '코디 추천 결과가 도착했어요 ✨',
-      };
+        console.log(
+          'JSON PARSE ERROR:',
+          parseError,
+        );
 
-    setChatRooms(prev =>
-      prev.map(room => {
-        if (
-          room.id ===
-          currentChatId
-        ) {
-          return {
-            ...room,
+        Alert.alert(
+          'JSON ERROR',
+          rawText,
+        );
 
-            messages: [
-              ...room.messages,
-              aiMessage,
-            ],
-          };
-        }
+        throw parseError;
+      }
 
-        return room;
-      }),
-    );
-  } catch (error) {
+      console.log(
+        'AI RESPONSE:',
+        data,
+      );
 
-  Alert.alert(
-  'ERROR',
-  JSON.stringify(error),
-);
+      const aiMessage: Message =
+        {
+          id: Date.now() + 1,
 
-  console.log(
-    'CHAT ERROR:',
-    error,
-  );
+          role: 'ai',
 
-  const errorMessage: Message =
-      {
-        id: Date.now() + 1,
+          text:
+            data.message ||
+            '코디 추천 결과가 도착했어요 ✨',
+        };
 
-        role: 'ai',
+      setChatRooms(prev =>
+        prev.map(room => {
+          if (
+            room.id ===
+            currentChatId
+          ) {
+            return {
+              ...room,
 
-        text:
-          '서버 연결 중 오류가 발생했어요 🥲',
-      };
+              messages: [
+                ...room.messages,
+                aiMessage,
+              ],
+            };
+          }
 
-    setChatRooms(prev =>
-      prev.map(room => {
-        if (
-          room.id ===
-          currentChatId
-        ) {
-          return {
-            ...room,
+          return room;
+        }),
+      );
 
-            messages: [
-              ...room.messages,
-              errorMessage,
-            ],
-          };
-        }
+    } catch (error: any) {
 
-        return room;
-      }),
-    );
-  }
+      console.log(
+        'CHAT ERROR:',
+        error,
+      );
 
-  setLoading(false);
-};
+      console.log(
+        'CHAT ERROR STRING:',
+        String(error),
+      );
+
+      console.log(
+        'CHAT ERROR JSON:',
+        JSON.stringify(
+          error,
+          null,
+          2,
+        ),
+      );
+
+      Alert.alert(
+        'ERROR',
+        String(error),
+      );
+
+      const errorMessage: Message =
+        {
+          id: Date.now() + 1,
+
+          role: 'ai',
+
+          text:
+            '서버 연결 중 오류가 발생했어요 🥲',
+        };
+
+      setChatRooms(prev =>
+        prev.map(room => {
+          if (
+            room.id ===
+            currentChatId
+          ) {
+            return {
+              ...room,
+
+              messages: [
+                ...room.messages,
+                errorMessage,
+              ],
+            };
+          }
+
+          return room;
+        }),
+      );
+    }
+
+    setLoading(false);
+  };
 
   const handleNewChat = () => {
     const newChatId =
@@ -219,7 +265,6 @@ const useRecommendChat = () => {
       ],
 
       pinned: false,
-
     };
 
     setChatRooms(prev => [
@@ -261,7 +306,6 @@ const useRecommendChat = () => {
           ],
 
           pinned: false,
-
         };
 
       setChatRooms([
@@ -288,33 +332,33 @@ const useRecommendChat = () => {
   };
 
   const handleRenameChat = (
-  chatId: number,
-  newTitle: string,
-) => {
-  const trimmedTitle =
-    newTitle.trim();
+    chatId: number,
+    newTitle: string,
+  ) => {
+    const trimmedTitle =
+      newTitle.trim();
 
-  if (!trimmedTitle) {
-    return;
-  }
+    if (!trimmedTitle) {
+      return;
+    }
 
-  setChatRooms(prev =>
-    prev.map(room => {
-      if (
-        room.id === chatId
-      ) {
-        return {
-          ...room,
+    setChatRooms(prev =>
+      prev.map(room => {
+        if (
+          room.id === chatId
+        ) {
+          return {
+            ...room,
 
-          title:
-            trimmedTitle,
-        };
-      }
+            title:
+              trimmedTitle,
+          };
+        }
 
-      return room;
-    }),
-  );
-};
+        return room;
+      }),
+    );
+  };
 
   return {
     loading,
@@ -324,7 +368,7 @@ const useRecommendChat = () => {
     chatRooms,
 
     setChatRooms,
-    
+
     currentChatId,
 
     handleSend,

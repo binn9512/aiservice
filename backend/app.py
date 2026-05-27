@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import backend.main as main  # 사진 분석용 main.py
+import main  # 사진 분석용 main.py
 import os
 import sqlite3
 import json
-from backend.chatbot_part import chat_with_closet  # 우리가 구체화한 챗봇 함수
+from chatbot_part import chat_with_closet  # 우리가 구체화한 챗봇 함수
 
 app = Flask(__name__)
 CORS(app)  # 다른 도메인(앱 등)에서 접근할 수 있게 허용
@@ -252,4 +252,4 @@ def delete_chat_room():
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

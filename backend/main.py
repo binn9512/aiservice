@@ -1,5 +1,5 @@
-from backend.vision_part import analyze_style
-import backend.db_test as db_test
+from vision_part import analyze_style
+import db_test as db_test
 
 def process_and_save(user_id, image_path):
 

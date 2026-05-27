@@ -47,54 +47,17 @@ const styles = StyleSheet.create({
   },
 
   content: {
-  flexGrow: 1,
+    flexGrow: 1,
 
-  paddingHorizontal: 16,
-  paddingTop: 12,
-  paddingBottom: 20,
-},
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+  },
 
   bottomSection: {
     backgroundColor: '#FFFFFF',
 
     paddingTop: 10,
-  },
-
-  closetToggleWrapper: {
-    paddingHorizontal: 16,
-
-    paddingBottom: 10,
-  },
-
-  toggleButton: {
-    flexDirection: 'row',
-
-    alignItems: 'center',
-  },
-
-  toggleCircle: {
-    width: 18,
-    height: 18,
-
-    borderRadius: 999,
-
-    borderWidth: 2,
-
-    borderColor: '#FF5C8A',
-
-    marginRight: 8,
-  },
-
-  toggleCircleActive: {
-    backgroundColor: '#FF5C8A',
-  },
-
-  toggleText: {
-    fontSize: 13,
-
-    fontWeight: '500',
-
-    color: '#111111',
   },
 
   optionToggle: {
@@ -189,22 +152,22 @@ const styles = StyleSheet.create({
   },
 
   quickPromptButton: {
-  backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
 
-  borderWidth: 1,
+    borderWidth: 1,
 
-  borderColor: '#F0DCE5',
+    borderColor: '#F0DCE5',
 
-  borderRadius: 999,
+    borderRadius: 999,
 
-  height: 30,
+    height: 30,
 
-  paddingHorizontal: 15,
+    paddingHorizontal: 15,
 
-  justifyContent: 'center',
+    justifyContent: 'center',
 
-  alignItems: 'center',
-},
+    alignItems: 'center',
+  },
 
   quickPromptText: {
     fontSize: 12,
@@ -269,27 +232,27 @@ const styles = StyleSheet.create({
   },
 
   modalOverlay: {
-  flex: 1,
+    flex: 1,
 
-  backgroundColor:
-    'rgba(0,0,0,0.25)',
+    backgroundColor:
+      'rgba(0,0,0,0.25)',
 
-  justifyContent: 'flex-end',
-},
+    justifyContent: 'flex-end',
+  },
 
   menuModal: {
-  backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
 
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
 
-  padding: 20,
-  paddingBottom: 34,
+    padding: 20,
+    paddingBottom: 34,
 
-  width: '100%',
+    width: '100%',
 
-  marginTop: 'auto',
-},
+    marginTop: 'auto',
+  },
 
   newChatButton: {
     alignItems: 'center',
@@ -449,101 +412,100 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-promptOverlay: {
-  flex: 1,
+  promptOverlay: {
+    flex: 1,
 
-  backgroundColor:
-    'rgba(0,0,0,0.25)',
+    backgroundColor:
+      'rgba(0,0,0,0.25)',
 
-  justifyContent: 'center',
+    justifyContent: 'center',
 
-  alignItems: 'center',
-},
+    alignItems: 'center',
+  },
 
-promptModal: {
-  width: '88%',
+  promptModal: {
+    width: '88%',
 
-  backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
 
-  borderRadius: 28,
+    borderRadius: 28,
 
-  paddingHorizontal: 22,
+    paddingHorizontal: 22,
 
-  paddingTop: 24,
+    paddingTop: 24,
 
-  paddingBottom: 20,
-},
+    paddingBottom: 20,
+  },
 
-promptTitle: {
-  fontSize: 17,
+  promptTitle: {
+    fontSize: 17,
 
-  fontWeight: '700',
+    fontWeight: '700',
 
-  color: '#111111',
+    color: '#111111',
 
-  marginBottom: 16,
-},
+    marginBottom: 16,
+  },
 
-promptInput: {
-  height: 46,
+  promptInput: {
+    height: 46,
 
-  borderWidth: 1,
+    borderWidth: 1,
 
-  borderColor: '#EAEAEA',
+    borderColor: '#EAEAEA',
 
-  borderRadius: 14,
+    borderRadius: 14,
 
-  paddingHorizontal: 14,
+    paddingHorizontal: 14,
 
-  fontSize: 14,
+    fontSize: 14,
 
-  color: '#111111',
-},
+    color: '#111111',
+  },
 
-promptButtonRow: {
-  flexDirection: 'row',
+  promptButtonRow: {
+    flexDirection: 'row',
 
-  justifyContent: 'flex-end',
+    justifyContent: 'flex-end',
 
-  marginTop: 18,
-},
+    marginTop: 18,
+  },
 
-cancelButton: {
-  marginRight: 10,
+  cancelButton: {
+    marginRight: 10,
 
-  paddingHorizontal: 16,
+    paddingHorizontal: 16,
 
-  height: 40,
+    height: 40,
 
-  justifyContent: 'center',
-},
+    justifyContent: 'center',
+  },
 
-cancelButtonText: {
-  fontSize: 14,
+  cancelButtonText: {
+    fontSize: 14,
 
-  color: '#666666',
-},
+    color: '#666666',
+  },
 
-addButton: {
-  backgroundColor: '#FF5C8A',
+  addButton: {
+    backgroundColor: '#FF5C8A',
 
-  borderRadius: 12,
+    borderRadius: 12,
 
-  paddingHorizontal: 18,
+    paddingHorizontal: 18,
 
-  height: 40,
+    height: 40,
 
-  justifyContent: 'center',
-},
+    justifyContent: 'center',
+  },
 
-addButtonText: {
-  fontSize: 14,
+  addButtonText: {
+    fontSize: 14,
 
-  fontWeight: '600',
+    fontWeight: '600',
 
-  color: '#FFFFFF',
-},
-
+    color: '#FFFFFF',
+  },
 });
 
 export default styles;

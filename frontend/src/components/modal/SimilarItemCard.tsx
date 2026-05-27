@@ -24,7 +24,12 @@ const SimilarItemCard = ({
       activeOpacity={0.8}
       style={styles.similarCard}>
       <Image
-        source={item.image}
+        source={
+          typeof item?.image ===
+          'string'
+            ? {uri: item.image}
+            : item?.image
+        }
         style={styles.similarImage}
         resizeMode="cover"
       />

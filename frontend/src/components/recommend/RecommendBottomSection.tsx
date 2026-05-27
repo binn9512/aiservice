@@ -6,18 +6,11 @@ import {
   View,
 } from 'react-native';
 
-import ClosetToggle from './ClosetToggle';
 import QuickPromptSection from './QuickPromptSection';
 
 import styles from '../../styles/recommend.styles';
 
 type Props = {
-  useMyCloset: boolean;
-
-  setUseMyCloset: (
-    value: boolean,
-  ) => void;
-
   showOptions: boolean;
 
   setShowOptions: (
@@ -25,12 +18,12 @@ type Props = {
   ) => void;
 
   quickPrompts: {
-  id: string;
+    id: string;
 
-  title: string;
+    title: string;
 
-  prompt: string;
-}[];
+    prompt: string;
+  }[];
 
   onQuickPromptPress: (
     text: string,
@@ -40,21 +33,12 @@ type Props = {
 };
 
 const RecommendBottomSection = ({
-  useMyCloset,
-  setUseMyCloset,
   showOptions,
   setShowOptions,
   quickPrompts,
   onQuickPromptPress,
   children,
 }: Props) => {
-  const handleToggleCloset =
-    () => {
-      setUseMyCloset(
-        !useMyCloset,
-      );
-    };
-
   const handleToggleOptions =
     () => {
       setShowOptions(
@@ -64,13 +48,6 @@ const RecommendBottomSection = ({
 
   return (
     <View style={styles.bottomSection}>
-      <ClosetToggle
-        value={useMyCloset}
-        onToggle={
-          handleToggleCloset
-        }
-      />
-
       <QuickPromptSection
         showOptions={showOptions}
         onToggle={

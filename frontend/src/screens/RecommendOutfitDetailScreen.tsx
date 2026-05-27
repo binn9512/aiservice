@@ -33,6 +33,10 @@ type RootStackParamList = {
     outfits: Outfit[];
     initialIndex: number;
   };
+
+  Recommend: {
+    prompt?: string;
+  };
 };
 
 export default function RecommendOutfitDetailScreen() {
@@ -251,7 +255,29 @@ export default function RecommendOutfitDetailScreen() {
         />
 
         <TouchableOpacity
-          style={styles.sendButton}>
+          style={styles.sendButton}
+          onPress={() => {
+            const trimmed =
+              inputText.trim();
+
+            if (!trimmed) {
+              return;
+            }
+
+            navigation.navigate(
+              'MainTabs',
+              {
+                screen: '코디추천',
+
+                params: {
+                  prompt: trimmed,
+                },
+              },
+            );
+
+            setInputText('');
+          }}>
+          
           <Text style={styles.sendText}>
             ➜
           </Text>

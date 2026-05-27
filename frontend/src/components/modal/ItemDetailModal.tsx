@@ -50,11 +50,11 @@ const ItemDetailModal = ({
     return null;
   }
 
-  const currentItem =
+  const currentItem: any =
     selectedSimilarItem || item;
 
   const isClosetItem =
-    currentItem.type ===
+    currentItem?.type ===
     'closet';
 
   return (
@@ -115,7 +115,13 @@ const ItemDetailModal = ({
                 }>
                 <Image
                   source={
-                    item.image
+                    typeof item?.image ===
+                    'string'
+                      ? {
+                          uri:
+                            item.image,
+                        }
+                      : item?.image
                   }
                   style={
                     styles.itemImage
@@ -131,7 +137,8 @@ const ItemDetailModal = ({
                     style={
                       styles.itemName
                     }>
-                    {item.name}
+                    {item?.name ||
+                      '아이템'}
                   </Text>
 
                   <Text
@@ -143,78 +150,89 @@ const ItemDetailModal = ({
                       : '추천 상품'}
                   </Text>
 
-                  <View
-                    style={
-                      styles.tagContainer
-                    }>
-                    {item.tags.map(
-                      tag => (
-                        <View
-                          key={
-                            tag
-                          }
-                          style={
-                            styles.tag
-                          }>
-                          <Text
+                  {item?.tags
+                    ?.length > 0 && (
+                    <View
+                      style={
+                        styles.tagContainer
+                      }>
+                      {item.tags.map(
+                        (
+                          tag: string,
+                        ) => (
+                          <View
+                            key={
+                              tag
+                            }
                             style={
-                              styles.tagText
+                              styles.tag
                             }>
-                            #{tag}
-                          </Text>
-                        </View>
-                      ),
-                    )}
-                  </View>
+                            <Text
+                              style={
+                                styles.tagText
+                              }>
+                              #{tag}
+                            </Text>
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
 
               {/* Similar Items */}
-              <View
-                style={
-                  styles.section
-                }>
+              {item
+                ?.similarItems
+                ?.length > 0 && (
                 <View
                   style={
-                    styles.sectionHeader
+                    styles.section
                   }>
-                  <Text
+                  <View
                     style={
-                      styles.sectionTitle
+                      styles.sectionHeader
                     }>
-                    대체 아이템
-                  </Text>
-                </View>
+                    <Text
+                      style={
+                        styles.sectionTitle
+                      }>
+                      대체 아이템
+                    </Text>
+                  </View>
 
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={
-                    false
-                  }>
-                  {item.similarItems.map(
-                    similar => (
-                      <TouchableOpacity
-                        key={
-                          similar.id
-                        }
-                        activeOpacity={
-                          0.8
-                        }
-                        onPress={() =>
-                          setSelectedSimilarItem(
-                            similar,
-                          )
-                        }>
-                        <SimilarItemCard
-                          item={
-                            similar
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={
+                      false
+                    }>
+                    {item.similarItems.map(
+                      (
+                        similar: any,
+                      ) => (
+                        <TouchableOpacity
+                          key={
+                            similar?.id
                           }
-                        />
-                      </TouchableOpacity>
-                    ),
-                  )}
-                </ScrollView>
-              </View>
+                          activeOpacity={
+                            0.8
+                          }
+                          onPress={() =>
+                            setSelectedSimilarItem(
+                              similar,
+                            )
+                          }>
+                          <SimilarItemCard
+                            item={
+                              similar
+                            }
+                          />
+                        </TouchableOpacity>
+                      ),
+                    )}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* AI Questions */}
               <View
@@ -356,7 +374,14 @@ const ItemDetailModal = ({
                 }>
                 <Image
                   source={
-                    currentItem.image
+                    typeof currentItem?.image ===
+                    'string'
+                      ? {
+                          uri:
+                            currentItem.image,
+                        }
+                      : currentItem?.image ||
+                        item.image
                   }
                   style={
                     styles.itemImage
@@ -372,44 +397,48 @@ const ItemDetailModal = ({
                     style={
                       styles.itemName
                     }>
-                    {
-                      currentItem.name
-                    }
+                    {currentItem?.name ||
+                      '아이템'}
                   </Text>
 
                   <Text
                     style={
                       styles.itemType
                     }>
-                    {currentItem.type ===
+                    {currentItem?.type ===
                     'closet'
                       ? '내 옷장'
                       : '추천 상품'}
                   </Text>
 
-                  <View
-                    style={
-                      styles.tagContainer
-                    }>
-                    {currentItem.tags.map(
-                      (tag: string) => (
-                        <View
-                          key={
-                            tag
-                          }
-                          style={
-                            styles.tag
-                          }>
-                          <Text
+                  {currentItem?.tags
+                    ?.length > 0 && (
+                    <View
+                      style={
+                        styles.tagContainer
+                      }>
+                      {currentItem.tags.map(
+                        (
+                          tag: string,
+                        ) => (
+                          <View
+                            key={
+                              tag
+                            }
                             style={
-                              styles.tagText
+                              styles.tag
                             }>
-                            #{tag}
-                          </Text>
-                        </View>
-                      ),
-                    )}
-                  </View>
+                            <Text
+                              style={
+                                styles.tagText
+                              }>
+                              #{tag}
+                            </Text>
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
 
