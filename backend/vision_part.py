@@ -59,6 +59,8 @@ def classify_clothing(image):
         "반바지": "a photo of shorts",
         "트레이닝 팬츠": "a photo of sweatpants or jogger pants",
         "스커트": "a photo of a skirt",
+        #원피스 
+        "원피스": "a photo of a dress",
         # 아우터
         "코트": "a photo of a long coat",
         "패딩": "a photo of a puffer jacket or down coat",
@@ -110,7 +112,12 @@ def classify_color(image):
         "네이비/블루": "a photo of navy or blue clothing",
         "데님": "a photo of blue denim texture clothing",
         "레드/핑크": "a photo of red or pink clothing",
-        "그린/카키": "a photo of green or khaki clothing"
+        "그린/카키": "a photo of green or khaki clothing",
+        "보라": "a photo of purple clothing",
+        "민트": "a photo of mint colored clothing",
+        "오렌지": "a photo of orange colored clothing",
+        "옐로우": "a photo of yellow colored clothing"
+
     }
     
     labels = list(colors.keys())
