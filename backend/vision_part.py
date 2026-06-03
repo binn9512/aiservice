@@ -221,8 +221,7 @@ def send_to_backend2_api(image_path):
 
     # 3. 백엔드 2의 API 주소 (친구가 알려준 주소로 수정 필요)
     # 예: "http://127.0.0.1:8000/api/clothes"
-    api_url = "http://localhost:8000/items" 
-
+    api_url = "http://localhost:5001/analyze"
     try:
         # 데이터를 JSON 형태로 전송
         response = requests.post(api_url, json=cloth_data)
