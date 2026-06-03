@@ -2,11 +2,6 @@ from huggingface_hub.inference._generated.types import zero_shot_image_classific
 import sqlite3
 import requests
 import json
-<<<<<<< HEAD
-
-# 1. Groq에서 받은 gsk_... 키를 여기에 넣으세요!
-GROQ_API_KEY = "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".strip()
-=======
 import os
 from dotenv import load_dotenv
 
