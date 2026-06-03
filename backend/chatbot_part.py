@@ -84,6 +84,7 @@ def chat_with_closet(user_msg):
       "accessory": "null"
     }}
     """
+    
     # 원래 있던 코드 위치 주변에 아래 print를 추가합니다.
     print(f"🔥 지금 서버가 발송하는 API 키: {GROQ_API_KEY}")
 

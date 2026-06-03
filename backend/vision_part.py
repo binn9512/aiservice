@@ -31,7 +31,9 @@ def remove_background(image_path: str, output_folder: str = "output"):
     output_image = remove(input_image)
 
     # 결과 저장 경로 설정 (확장자를 .png로 변경하여 투명도 유지)
-    output_filename = f"{input_path.stem}_no_bg.png"
+    from uuid import uuid4
+    
+    output_filename = f"{uuid4()}_no_bg.png"
     output_path = os.path.join(output_folder, output_filename)
 
     # Pillow를 사용하여 저장
