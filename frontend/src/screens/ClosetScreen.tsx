@@ -40,6 +40,10 @@ const ClosetScreen = () => {
     setSelectedCategory] =
     useState('전체');
 
+  const [sortOrder,
+  setSortOrder] =
+  useState('latest');
+
   const [clothesData,
     setClothesData] =
     useState<any[]>([
@@ -288,6 +292,34 @@ const ClosetScreen = () => {
         return false;
       });
 
+      const sortedData =
+        [...filteredData].sort(
+          (a, b) => {
+            if (
+              a.type === 'add'
+            )
+              return -1;
+
+            if (
+              b.type === 'add'
+            )
+              return 1;
+
+            if (
+              sortOrder ===
+              'latest'
+            ) {
+              return (
+                b.id - a.id
+              );
+            }
+
+            return (
+              a.id - b.id
+            );
+          },
+        );
+
   const renderClothingItem =
     ({item}: any) => {
       if (item.type === 'add') {
@@ -363,33 +395,63 @@ const ClosetScreen = () => {
             내 옷장
           </Text>
 
-          <View
-            style={
-              styles.headerIcons
-            }>
-            <TouchableOpacity
+            <View
               style={
-                styles.iconButton
+                styles.headerIcons
               }>
-              <Ionicons
-                name="search-outline"
-                size={24}
-                color="#111111"
-              />
-            </TouchableOpacity>
+              
+              {/* 검색 */}
+              <TouchableOpacity
+                style={
+                  styles.iconButton
+                }>
+                <Ionicons
+                  name="search-outline"
+                  size={24}
+                  color="#111111"
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={
-                styles.iconButton
-              }>
-              <Ionicons
-                name="options-outline"
-                size={24}
-                color="#111111"
-              />
-            </TouchableOpacity>
+              {/* 정렬 */}
+              <TouchableOpacity
+                style={
+                  styles.iconButton
+                }
+                onPress={() =>
+                  Alert.alert(
+                    '정렬',
+                    '정렬 방식을 선택하세요',
+                    [
+                      {
+                        text: '최신순',
+                        onPress: () =>
+                          setSortOrder(
+                            'latest',
+                          ),
+                      },
+                      {
+                        text: '오래된순',
+                        onPress: () =>
+                          setSortOrder(
+                            'oldest',
+                          ),
+                      },
+                      {
+                        text: '취소',
+                        style: 'cancel',
+                      },
+                    ],
+                  )
+                }>
+                <Ionicons
+                  name="options-outline"
+                  size={24}
+                  color="#111111"
+                />
+              </TouchableOpacity>
+
+</View>
           </View>
-        </View>
           <>
             <View
               style={
@@ -501,7 +563,7 @@ const ClosetScreen = () => {
                 styles.gridContainer
               }>
               <FlatList
-                data={filteredData}
+                data={sortedData}
                 renderItem={
                   renderClothingItem
                 }
