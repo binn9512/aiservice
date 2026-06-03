@@ -10,7 +10,6 @@ load_dotenv()
 
 # 1. 이제 안전하게 .env에서 키를 가져오므로 깃허브 보디가드가 통과시켜 줍니다!
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
->>>>>>> origin/chaebin
 # 🧠 핵심 추가: AI의 기억력을 담당할 대화 기록 저장소
 chat_history = []
 
@@ -78,12 +77,9 @@ def chat_with_closet(user_msg):
       "accessory": "null"
     }}
     """
-<<<<<<< HEAD
     
-=======
     # 원래 있던 코드 위치 주변에 아래 print를 추가합니다.
     print(f"🔥 지금 서버가 발송하는 API 키: {GROQ_API_KEY}")
->>>>>>> origin/chaebin
     # ⭐ 주소가 Groq 전용으로 바뀌었습니다!
     url = "https://api.groq.com/openai/v1/chat/completions"
     

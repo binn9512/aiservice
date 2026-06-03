@@ -1,4 +1,7 @@
-import React, {useState} from 'react';
+import React, {
+  useState,
+  useEffect,
+} from 'react';
 
 import {
   View,
@@ -32,11 +35,6 @@ const defaultProfile: ProfileData = {
   cover: '복부',
 };
 
-const weather = {
-  temp: '21°C',
-  condition: '맑음',
-};
-
 function InfoRow({
   icon,
   label,
@@ -68,7 +66,10 @@ function InfoRow({
 function WeatherCard({
   weather,
 }: {
-  weather: any;
+  weather: {
+    title: string;
+    message: string;
+  };
 }) {
   return (
     <View style={styles.weatherCard}>
@@ -77,14 +78,12 @@ function WeatherCard({
       </Text>
 
       <View>
-        <Text style={styles.weatherTitle}>
-          {weather.condition} ·{' '}
-          {weather.temp}
+        <Text style={styles.weatherCardTitle}>
+          {weather.title}
         </Text>
 
         <Text style={styles.weatherDesc}>
-          오늘은 가볍고 화사한 룩이
-          잘 어울려요.
+          {weather.message}
         </Text>
       </View>
     </View>
@@ -103,6 +102,28 @@ const ProfileScreen = () => {
         ?.updatedProfile ||
         defaultProfile,
     );
+
+    const [weather, setWeather] =
+  useState({
+    title: '날씨 불러오는 중...',
+    message: '',
+  });
+
+  useEffect(() => {
+  fetch(
+    'http://192.168.219.125:5001/weather',
+  )
+    .then(res => res.json())
+    .then(data => {
+      setWeather(data);
+    })
+    .catch(error => {
+      console.log(
+        '날씨 API 오류:',
+        error,
+      );
+    });
+}, []);
 
   function restartSurvey() {
     navigation.navigate(
@@ -127,13 +148,6 @@ const ProfileScreen = () => {
               styles.headerTitle
             }>
             프로필
-          </Text>
-
-          <Text
-            style={
-              styles.headerIcon
-            }>
-            ⚙
           </Text>
         </View>
 
@@ -229,7 +243,7 @@ const ProfileScreen = () => {
           }>
           <Text
             style={
-              styles.sectionTitle
+              styles.infoTitle
             }>
             나의 정보
           </Text>
@@ -252,7 +266,7 @@ const ProfileScreen = () => {
             styles.infoList
           }>
           <InfoRow
-            icon="♡"
+            icon="🩷"
             label="스타일 선호도"
             value={
               profileData.style
@@ -260,7 +274,7 @@ const ProfileScreen = () => {
           />
 
           <InfoRow
-            icon="△"
+            icon="🎨"
             label="퍼스널 컬러"
             value={
               profileData.personalColor
@@ -268,15 +282,15 @@ const ProfileScreen = () => {
           />
 
           <InfoRow
-            icon="◌"
-            label="좋아하는 색상 느낌"
+            icon="🌈"
+            label="좋아하는 색상"
             value={
               profileData.colorMood
             }
           />
 
           <InfoRow
-            icon="▱"
+            icon="🧍‍♀️"
             label="체형"
             value={
               profileData.bodyType
@@ -284,7 +298,7 @@ const ProfileScreen = () => {
           />
 
           <InfoRow
-            icon="♧"
+            icon="✨"
             label="강조하고 싶은 부위"
             value={
               profileData.highlight
@@ -292,7 +306,7 @@ const ProfileScreen = () => {
           />
 
           <InfoRow
-            icon="▢"
+            icon="🛡️"
             label="가리고 싶은 부위"
             value={
               profileData.cover
@@ -302,7 +316,7 @@ const ProfileScreen = () => {
 
         <Text
           style={
-            styles.sectionTitle
+            styles.weatherSectionTitle
           }>
           오늘의 날씨
         </Text>
@@ -408,7 +422,7 @@ const styles = StyleSheet.create({
 
   styleTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
 
     color: '#FF5C8A',
 
@@ -419,7 +433,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
 
-    marginTop: 14,
+    marginTop: 12,
   },
 
   chip: {
@@ -440,7 +454,6 @@ const styles = StyleSheet.create({
       '#FFFFFF',
 
     marginRight: 8,
-    marginBottom: 8,
   },
 
   sectionHeader: {
@@ -453,16 +466,13 @@ const styles = StyleSheet.create({
 
     paddingHorizontal: 20,
 
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
-  sectionTitle: {
-    fontSize: 16,
+  infoTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#111111',
-
-    marginHorizontal: 20,
-    marginBottom: 12,
   },
 
   actionText: {
@@ -473,7 +483,7 @@ const styles = StyleSheet.create({
 
   infoList: {
     marginHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 18,
   },
 
   infoRow: {
@@ -498,26 +508,26 @@ const styles = StyleSheet.create({
   },
 
   infoIcon: {
-    width: 26,
+    width: 30,
     fontSize: 15,
     color: '#777777',
   },
 
   infoLabel: {
     fontSize: 14,
-    color: '#555555',
+    color: '#111111',
   },
 
   infoValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111111',
+    fontWeight: '500',
+    color: '#555555',
   },
 
   weatherCard: {
     marginHorizontal: 20,
 
-    marginBottom: 120,
+    marginBottom: 40,
 
     borderRadius: 18,
 
@@ -536,13 +546,25 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
 
-  weatherTitle: {
-    fontSize: 15,
+  weatherSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+
+    color: '#111111',
+
+    marginHorizontal: 20,
+
+    marginTop: 4,
+    marginBottom: 12,
+  },
+
+  weatherCardTitle: {
+    fontSize: 16,
     fontWeight: '700',
 
     color: '#2EAD5B',
 
-    marginBottom: 4,
+    marginBottom: 6,
   },
 
   weatherDesc: {
