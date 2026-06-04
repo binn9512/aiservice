@@ -12,7 +12,9 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 # 🧠 핵심 추가: AI의 기억력을 담당할 대화 기록 저장소
-chat_history = []
+# 1. 기존의 chat_history = [] 를 삭제하고, 방 여러 개를 담을 상자로 변경!
+chat_history = {} 
+
 
 def get_closet_data():
     try:
@@ -26,8 +28,17 @@ def get_closet_data():
         return ", ".join(items)
     except Exception as e:
         return f"DB 읽기 오류: {e}"
-def chat_with_closet(user_msg):
-    global chat_history # 전역 변수(기억 저장소) 사용
+
+# 2. 함수가 '방 번호(room_id)'도 같이 받도록 수정합니다.
+def chat_with_closet(user_msg, room_id="default"):
+    global chat_history
+    
+    # 만약 이 방(room_id)이 처음 만들어진 방이라면, 새 비밀 공책을 만들어줍니다.
+    if room_id not in chat_history:
+        chat_history[room_id] = []
+        
+    # 이제 이 방 전용 기억장치를 불러옵니다.
+    room_history = chat_history[room_id]
     my_items = get_closet_data()
 
     
@@ -61,6 +72,7 @@ def chat_with_closet(user_msg):
 
     [🌟출력 규칙🌟]
     - 반드시 아무런 텍스트나 마크다운 기호(```json) 없이 오직 아래 형식의 JSON 딱 하나만 반환해. 다른 주석은 절대 달지마.
+    -답변("message")은 단 한 글자도 빠짐없이 무조건 100% 순수한 한국어로만 작성하세요.
 
     예시 1 (첫 대화 시작 시 - 상황 2):
     {{
@@ -98,22 +110,15 @@ def chat_with_closet(user_msg):
 
     # 🧠 3번 기능(기억력) 작동: 시스템 규칙 + 과거 대화 내용 + 이번 질문을 합쳐서 보냄
     messages_to_send = [{"role": "system", "content": system_prompt}]
-    messages_to_send.extend(chat_history) # 과거 대화 추가
+    messages_to_send.extend(room_history) # 과거 대화 추가
     messages_to_send.append({"role": "user", "content": user_msg}) # 현재 질문 추가
     
     data = {
         "model": "llama-3.3-70b-versatile",
         "messages": messages_to_send,
-        "temperature": 0.3 # 설명을 해야 하니 창의성을 살짝(0.3) 올려줍니다.
+        "temperature": 0.45 # 설명을 해야 하니 창의성을 살짝(0.3) 올려줍니다.
     }
-    data = {
-        "model":"llama-3.3-70b-versatile",
-        "messages": [
-            {"role": "system", "content": system_prompt}, # 여기서 system_prompt 변수를 사용!
-            {"role": "user", "content": user_msg}
-        ],
-        "temperature": 0.5
-    }
+    
     
     try:
         response = requests.post(url, headers=headers, json=data)
@@ -121,18 +126,17 @@ def chat_with_closet(user_msg):
         
         if 'choices' in result:
             ai_answer = result['choices'][0]['message']['content'].strip()
+        
+        # 🧠 [채빈님이 물어보신 핵심 구역 수정!] 
+        # 공용이 아니라 '이 채팅방 공책'에만 질문과 답변을 저장합니다!
+        room_history.append({"role": "user", "content": user_msg})
+        room_history.append({"role": "assistant", "content": ai_answer})
+        
+        # 이 방의 대화가 20개가 넘어가면 앞부분 2개 삭제 (방별로 개별 적용)
+        if len(room_history) > 20: 
+            del room_history[0:2]
             
-            # 🧠 대화가 성공적으로 끝났으면, 이번 대화(질문과 답변)를 기억장치에 저장합니다!
-            chat_history.append({"role": "user", "content": user_msg})
-            chat_history.append({"role": "assistant", "content": ai_answer})
-            
-            # (옵션) 기억이 너무 길어지면 에러가 날 수 있으니, 최근 10번의 대화만 기억하게 제한
-            if len(chat_history) > 20: 
-                del chat_history[0:2]
-                
-            return ai_answer
-        else:
-            return f"❌ 에러 발생: {result.get('error', {}).get('message', '알 수 없는 오류')}"
+        return ai_answer
     except Exception as e:
         return f"⚠️ 통신 에러: {e}"
 
