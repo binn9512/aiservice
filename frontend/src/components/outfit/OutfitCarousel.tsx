@@ -13,8 +13,6 @@ import {
 
 import OutfitCard from './OutfitCard';
 
-import PaginationDots from '../common/PaginationDots';
-
 import mockOutfits, {
   OutfitItem,
 } from '../../data/mockOutfits';
@@ -114,16 +112,6 @@ const OutfitCarousel = ({
         onViewableItemsChanged={
           onViewableItemsChanged
         }
-      />
-
-      <PaginationDots
-        total={
-          recommendedOutfits &&
-          recommendedOutfits.length > 0
-            ? recommendedOutfits.length
-            : mockOutfits.length
-        }
-        activeIndex={activeIndex}
       />
     </View>
   );

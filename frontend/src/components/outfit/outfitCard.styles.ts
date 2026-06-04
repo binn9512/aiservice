@@ -13,6 +13,8 @@ export default StyleSheet.create({
   card: {
     width: CARD_WIDTH,
 
+    aspectRatio: 1,
+
     flexDirection: 'row',
 
     backgroundColor: '#FFFFFF',
@@ -37,35 +39,46 @@ export default StyleSheet.create({
     elevation: 4,
   },
 
-    modelImage: {
-      width: '45%',
+  modelContainer: {
+    width: '45%',
 
-      height: 280,
+    height: '100%',
 
-      borderRadius: 16,
+    backgroundColor: '#F2F0F1',
 
-      backgroundColor: '#F2F0F1',
-    },
-
-
-  itemSection: {
-    flex: 1,
-    maxWidth: 170,
+    borderRadius: 16,
 
     justifyContent: 'center',
 
+    alignItems: 'center',
+  },
+
+  modelImage: {
+    width: '100%',
+
+    height: '95%',
+  },
+
+  itemSection: {
+    flex: 1,
+
     marginLeft: 12,
+
+    height: '100%',
+
+    justifyContent: 'space-between',
   },
 
   itemButton: {
+    flex: 1,
+
     backgroundColor: '#F2F0F1',
 
     borderRadius: 12,
 
-    paddingVertical: 8,
     paddingHorizontal: 10,
 
-    marginBottom: 10,
+    marginBottom: 8,
 
     flexDirection: 'row',
 
@@ -78,6 +91,8 @@ export default StyleSheet.create({
     fontWeight: '600',
 
     color: '#111111',
+
+    marginTop: 1,
   },
 
   typeText: {
@@ -93,7 +108,7 @@ export default StyleSheet.create({
 
     flexWrap: 'wrap',
 
-    marginTop: 8,
+    marginTop: 5,
   },
 
   tag: {
@@ -105,7 +120,6 @@ export default StyleSheet.create({
     paddingVertical: 4,
 
     marginRight: 6,
-    marginBottom: 6,
   },
 
   tagText: {

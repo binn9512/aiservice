@@ -126,7 +126,7 @@ const ItemDetailModal = ({
                   style={
                     styles.itemImage
                   }
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
 
                 <View

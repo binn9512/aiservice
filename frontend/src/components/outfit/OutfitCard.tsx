@@ -57,15 +57,19 @@ const OutfitCard = ({
       }>
 
       {/* Model Image */}
-      <Image
-        source={outfit.modelImage}
-        style={styles.modelImage}
-        resizeMode="cover"
-      />
+      <View style={styles.modelContainer}>
+        <Image
+          source={outfit.modelImage}
+          style={styles.modelImage}
+          resizeMode="contain"
+        />
+      </View>
 
       {/* Item List */}
       <View style={styles.itemSection}>
         {outfit.items.map(item => {
+          console.log(item);
+
           const isClosetItem =
             item.type ===
             'closet';
@@ -86,8 +90,8 @@ const OutfitCard = ({
                     : item.image
                 }
                 style={{
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   marginRight: 10,
                 }}
                 resizeMode="contain"

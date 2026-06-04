@@ -178,6 +178,7 @@ def chat_api():
         top_id = ai_json.get('top')
         bottom_id = ai_json.get('bottom')
         outer_id = ai_json.get('outer')
+        dress_id = ai_json.get('dress')
         shoes_id = ai_json.get('shoes')
         bag_id = ai_json.get('bag')
         accessory_id = ai_json.get('accessory')
@@ -186,6 +187,7 @@ def chat_api():
             "top": get_item_info_by_id(top_id),
             "bottom": get_item_info_by_id(bottom_id),
             "outer": get_item_info_by_id(outer_id),
+            "dress": get_item_info_by_id(dress_id),
             "shoes": get_item_info_by_id(shoes_id),
             "bag": get_item_info_by_id(bag_id),
             "accessory": get_item_info_by_id(accessory_id)
@@ -200,6 +202,7 @@ def chat_api():
                 "top": get_image_path_by_id(top_id),
                 "bottom": get_image_path_by_id(bottom_id),
                 "outer": get_image_path_by_id(outer_id),
+                "dress": get_image_path_by_id(dress_id),
                 "shoes": get_image_path_by_id(shoes_id),
                 "bag": get_image_path_by_id(bag_id),
                 "accessory": get_image_path_by_id(accessory_id)
@@ -209,6 +212,7 @@ def chat_api():
                 "top": get_item_info_by_id(top_id),
                 "bottom": get_item_info_by_id(bottom_id),
                 "outer": get_item_info_by_id(outer_id),
+                "dress": get_item_info_by_id(dress_id),
                 "shoes": get_item_info_by_id(shoes_id),
                 "bag": get_item_info_by_id(bag_id),
                 "accessory": get_item_info_by_id(accessory_id)

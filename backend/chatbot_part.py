@@ -73,13 +73,15 @@ def chat_with_closet(user_msg, room_id="default"):
     [🌟출력 규칙🌟]
     - 반드시 아무런 텍스트나 마크다운 기호(```json) 없이 오직 아래 형식의 JSON 딱 하나만 반환해. 다른 주석은 절대 달지마.
     -답변("message")은 단 한 글자도 빠짐없이 무조건 100% 순수한 한국어로만 작성하세요.
+    - 원피스가 선택된 경우에는 "dress" 필드에 의류 ID를 넣고, top, bottom은 반드시 "null"로 반환한다.
 
     예시 1 (첫 대화 시작 시 - 상황 2):
     {{
       "message": "오늘 어떤 코디 추천해드릴까요? 원하시는 스타일이나 용도를 알려주세요!",
+      "outer": "null",
+      "dress": "null",
       "top": "null",
       "bottom": "null",
-      "outer": "null",
       "shoes": "null",
       "bag": "null",
       "accessory": "null"
@@ -88,9 +90,10 @@ def chat_with_closet(user_msg, room_id="default"):
     예시 2 (스타일 확인 후 즉시 추천 또는 수정할 때 - 상황 1):
     {{
       "message": "요청하신 스타일에 맞춰 내 옷장 안의 아이템들로 단정하게 코디해 보았습니다!",
-      "top": "1",
-      "bottom": "3",
       "outer": "null",
+      "dress": "null",
+      "top": "null",
+      "bottom": "null",
       "shoes": "null",
       "bag": "null",
       "accessory": "null"

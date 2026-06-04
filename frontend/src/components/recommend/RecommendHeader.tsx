@@ -31,7 +31,7 @@ const RecommendHeader = ({
               styles.headerSubtitle
             }>
             원하는 스타일을
-            자유롭게 물어보세요
+            자유롭게 요청해보세요
           </Text>
         </View>
 

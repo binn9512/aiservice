@@ -97,21 +97,6 @@ export default function RecommendOutfitDetailScreen() {
         {/* Content */}
         <View style={styles.content}>
 
-          <TouchableOpacity
-            style={styles.leftArrow}
-            onPress={() =>
-              setIndex(
-                (prev: number) =>
-                  prev === 0
-                    ? outfits.length - 1
-                    : prev - 1,
-              )
-            }>
-            <Text style={styles.arrow}>
-              ‹
-            </Text>
-          </TouchableOpacity>
-
           <Image
             source={current.modelImage}
             style={styles.modelImage}
@@ -122,6 +107,7 @@ export default function RecommendOutfitDetailScreen() {
               코디 아이템
             </Text>
 
+            <View style={styles.itemsContainer}>
             {current.items.map(
               (
                 item: OutfitItem,
@@ -132,8 +118,13 @@ export default function RecommendOutfitDetailScreen() {
                   style={styles.itemRow}>
 
                   <Image
-                    source={item.image}
+                    source={
+                      typeof item.image === 'string'
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     style={styles.itemImage}
+                    resizeMode="contain"
                   />
 
                   <View style={{flex: 1}}>
@@ -151,48 +142,10 @@ export default function RecommendOutfitDetailScreen() {
                 </View>
               ),
             )}
+            </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.rightArrow}
-            onPress={() =>
-              setIndex(
-                (prev: number) =>
-                  prev ===
-                  outfits.length - 1
-                    ? 0
-                    : prev + 1,
-              )
-            }>
-            <Text style={styles.arrow}>
-              ›
-            </Text>
-          </TouchableOpacity>
 
-        </View>
-
-        {/* Pagination */}
-        <Text style={styles.pageText}>
-          {index + 1} /{' '}
-          {outfits.length}
-        </Text>
-
-        <View style={styles.dotRow}>
-          {outfits.map(
-            (
-              _: Outfit,
-              idx: number,
-            ) => (
-              <View
-                key={idx}
-                style={[
-                  styles.dot,
-                  idx === index &&
-                    styles.activeDot,
-                ]}
-              />
-            ),
-          )}
         </View>
 
         {/* Questions */}
@@ -249,7 +202,7 @@ export default function RecommendOutfitDetailScreen() {
           onChangeText={
             setInputText
           }
-          placeholder="메시지를 입력하세요..."
+          placeholder="수정하고 싶은 점을 입력해보세요"
           placeholderTextColor="#B5B5B5"
           style={styles.input}
         />
@@ -346,34 +299,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  leftArrow: {
-    position: 'absolute',
-
-    left: 14,
-
-    top: '42%',
-
-    zIndex: 10,
-  },
-
-  rightArrow: {
-    position: 'absolute',
-
-    right: 192,
-
-    top: '42%',
-
-    zIndex: 10,
-  },
-
-  arrow: {
-    fontSize: 40,
-
-    fontWeight: '500',
-
-    color: '#111',
-  },
-
   modelImage: {
     width: 160,
 
@@ -428,6 +353,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
+  itemsContainer: {
+    flex: 1,
+    justifyContent: 'space-evenly',
+  },
+
   itemName: {
     fontSize: 12,
 
@@ -444,56 +374,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  pageText: {
-    textAlign: 'center',
-
-    marginTop: 22,
-
-    fontSize: 16,
-
-    fontWeight: '400',
-
-    color: '#111',
-  },
-
-  dotRow: {
-    flexDirection: 'row',
-
-    justifyContent: 'center',
-
-    marginTop: 10,
-  },
-
-  dot: {
-    width: 8,
-
-    height: 8,
-
-    borderRadius: 4,
-
-    backgroundColor: '#D9D9D9',
-
-    marginHorizontal: 4,
-  },
-
-  activeDot: {
-    backgroundColor: '#FF5C8A',
-  },
-
   questionSection: {
-    marginTop: 10,
+    marginTop: 25,
 
     gap: 10,
   },
 
   questionTitle: {
-    fontSize: 20,
+    fontSize: 22,
 
     fontWeight: '700',
 
     color: '#111',
 
-    marginBottom: 4,
+    marginBottom: 3,
   },
 
   questionButton: {

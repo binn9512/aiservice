@@ -182,6 +182,7 @@ const useRecommendChat = () => {
         data.items?.outer,
         data.items?.top,
         data.items?.bottom,
+        data.items?.dress,
         data.items?.shoes,
         data.items?.bag,
       ]

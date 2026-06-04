@@ -465,7 +465,7 @@ const ClosetScreen = () => {
               style={
                 styles.searchHeaderInput
               }
-              placeholder="원하는 옷의 색상, 스타일, 카테고리로 검색"
+              placeholder="옷의 이름, 색상, 스타일, 카테고리로 검색"
               value={searchText}
               onChangeText={
                 setSearchText
@@ -558,7 +558,7 @@ const ClosetScreen = () => {
                   style={
                     styles.summaryTitle
                   }>
-                  AI가 인식한 내 옷
+                  AI가 분석한 내 옷
                 </Text>
 
                 <View
