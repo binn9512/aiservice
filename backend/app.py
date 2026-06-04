@@ -125,9 +125,12 @@ def get_image_path_by_id(clothing_id):
 def chat_api():
     user_data = request.json
     user_message = user_data.get('message', '')
+
+    # 🌟 [수정 1] 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
+    room_id = user_data.get('room_id', 'default')
     
     # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
-    ai_string_response = chat_with_closet(user_message)
+    ai_string_response = chat_with_closet(user_message, room_id)
     print(f"\n🤖 [서버 내부 로그] AI가 반환한 JSON: {ai_string_response}\n")
     
     try:
