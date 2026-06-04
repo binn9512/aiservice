@@ -73,6 +73,8 @@ const RecommendScreen = () => {
     loading,
     chatRooms,
     setChatRooms,
+    recommendedItems,
+    recommendedOutfits,
     handleSend,
     handleNewChat,
     handleDeleteChat,
@@ -192,6 +194,9 @@ const RecommendScreen = () => {
           {currentChat.messages
             .length >= 3 && (
             <OutfitCarousel
+              recommendedOutfits={
+                recommendedOutfits
+              }
               onItemPress={
                 handleItemPress
               }

@@ -72,7 +72,7 @@ export default StyleSheet.create({
 
   itemImage: {
     width: 120,
-    height: 160,
+    aspectRatio: 1,
 
     borderRadius: 16,
 

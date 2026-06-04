@@ -14,6 +14,9 @@ from './src/screens/RecommendOutfitDetailScreen';
 import SurveyScreen
 from './src/screens/SurveyScreen';
 
+import ClothingDetailScreen
+from './src/screens/ClothingDetailScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -39,6 +42,11 @@ export default function App() {
         <Stack.Screen
           name="Survey"
           component={SurveyScreen}
+        />
+
+        <Stack.Screen
+          name="ClothingDetail"
+          component={ClothingDetailScreen}
         />
 
       </Stack.Navigator>

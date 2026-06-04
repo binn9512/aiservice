@@ -254,8 +254,7 @@ const ItemDetailModal = ({
                     navigation.navigate(
                       '코디추천',
                       {
-                        prompt:
-                          '이 아이템으로 다른 코디 추천해줘',
+                        prompt: `${item.name} (${item.tags?.join(', ')})으로 다른 코디 추천해줘`
                       },
                     );
                   }}
@@ -269,8 +268,7 @@ const ItemDetailModal = ({
                     navigation.navigate(
                       '코디추천',
                       {
-                        prompt:
-                          '이 아이템 빼고 다시 코디해줘',
+                        prompt: `${item.name} (${item.tags?.join(', ')}) 빼고 다시 코디해줘`,
                       },
                     );
                   }}

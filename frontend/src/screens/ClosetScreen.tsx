@@ -17,7 +17,13 @@ import {
   Image,
   ScrollView,
   Alert,
+  TextInput,
 } from 'react-native';
+
+import {
+  useNavigation,
+  useFocusEffect,
+} from '@react-navigation/native';
 
 import Ionicons
 from 'react-native-vector-icons/Ionicons';
@@ -36,9 +42,20 @@ const categories = [
 ];
 
 const ClosetScreen = () => {
+  const navigation =
+    useNavigation<any>();
+
   const [selectedCategory,
     setSelectedCategory] =
     useState('전체');
+
+  const [isSearching,
+    setIsSearching] =
+      useState(false);
+
+  const [searchText,
+    setSearchText] =
+      useState('');
 
   const [sortOrder,
   setSortOrder] =
@@ -57,9 +74,14 @@ const ClosetScreen = () => {
     setIsUploading] =
     useState(false);
 
-  useEffect(() => {
-    loadClosetItems();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadClosetItems();
+    }, [])
+  );
+
+  const [isEditMode, setIsEditMode] =
+    useState(false);
 
   async function loadClosetItems() {
     try {
@@ -292,8 +314,32 @@ const ClosetScreen = () => {
         return false;
       });
 
+      const searchedData =
+        filteredData.filter(item => {
+          if (item.type === 'add') {
+            return true;
+          }
+
+          const keyword =
+            searchText.toLowerCase();
+
+          return (
+            item.category
+              ?.toLowerCase()
+              .includes(keyword) ||
+
+            item.style
+              ?.toLowerCase()
+              .includes(keyword) ||
+
+            item.color
+              ?.toLowerCase()
+              .includes(keyword)
+          );
+        });
+
       const sortedData =
-        [...filteredData].sort(
+        [...searchedData].sort(
           (a, b) => {
             if (
               a.type === 'add'
@@ -350,24 +396,13 @@ const ClosetScreen = () => {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.itemCard}
-          onLongPress={() =>
-            Alert.alert(
-              '옷 삭제',
-              '이 옷을 삭제할까요?',
-              [
-                {
-                  text: '취소',
-                  style: 'cancel',
-                },
-                {
-                  text: '삭제',
-                  style: 'destructive',
-                  onPress: () =>
-                    deleteClothes(item.id),
-                },
-              ],
-            )
-          }>
+          onPress={() => {
+            navigation.navigate(
+              'ClothingDetail',
+              {item},
+            );
+          }}>
+          
           <Image
             source={{
               uri:
@@ -375,7 +410,43 @@ const ClosetScreen = () => {
                 item.image,
             }}
             style={styles.itemImage}
+            resizeMode="contain"
           />
+
+          {isEditMode && (
+            <TouchableOpacity
+              style={
+                styles.deleteBadge
+              }
+              onPress={() =>
+                Alert.alert(
+                  '옷 삭제',
+                  '이 옷을 삭제할까요?',
+                  [
+                    {
+                      text: '취소',
+                      style:
+                        'cancel',
+                    },
+                    {
+                      text: '삭제',
+                      style:
+                        'destructive',
+                      onPress: () =>
+                        deleteClothes(
+                          item.id,
+                        ),
+                    },
+                  ],
+                )
+              }>
+              <Ionicons
+                name="close"
+                size={14}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
       );
     };
@@ -388,12 +459,27 @@ const ClosetScreen = () => {
           false
         }>
         <View style={styles.header}>
-          <Text
-            style={
-              styles.headerTitle
-            }>
-            내 옷장
-          </Text>
+
+          {isSearching ? (
+            <TextInput
+              style={
+                styles.searchHeaderInput
+              }
+              placeholder="원하는 옷의 색상, 스타일, 카테고리로 검색"
+              value={searchText}
+              onChangeText={
+                setSearchText
+              }
+              autoFocus
+            />
+          ) : (
+            <Text
+              style={
+                styles.headerTitle
+              }>
+              내 옷장
+            </Text>
+          )}
 
             <View
               style={
@@ -404,51 +490,47 @@ const ClosetScreen = () => {
               <TouchableOpacity
                 style={
                   styles.iconButton
-                }>
+                }
+                onPress={() => {
+                  setIsSearching(
+                    !isSearching,
+                  );
+
+                  if (isSearching) {
+                    setSearchText('');
+                  }
+                }}>
+
                 <Ionicons
-                  name="search-outline"
+                  name={
+                    isSearching
+                      ? 'close'
+                      : 'search-outline'
+                  }
                   size={24}
                   color="#111111"
                 />
+
               </TouchableOpacity>
 
-              {/* 정렬 */}
+              {/* 편집 */}
               <TouchableOpacity
-                style={
-                  styles.iconButton
-                }
+                style={styles.iconButton}
                 onPress={() =>
-                  Alert.alert(
-                    '정렬',
-                    '정렬 방식을 선택하세요',
-                    [
-                      {
-                        text: '최신순',
-                        onPress: () =>
-                          setSortOrder(
-                            'latest',
-                          ),
-                      },
-                      {
-                        text: '오래된순',
-                        onPress: () =>
-                          setSortOrder(
-                            'oldest',
-                          ),
-                      },
-                      {
-                        text: '취소',
-                        style: 'cancel',
-                      },
-                    ],
+                  setIsEditMode(
+                    !isEditMode,
                   )
                 }>
-                <Ionicons
-                  name="options-outline"
-                  size={24}
-                  color="#111111"
-                />
-              </TouchableOpacity>
+                  <Ionicons
+                    name="trash-outline"
+                    size={24}
+                    color={
+                      isEditMode
+                        ? '#FF5C8A'
+                        : '#111111'
+                    }
+                  />
+                </TouchableOpacity>
 
 </View>
           </View>
@@ -558,6 +640,50 @@ const ClosetScreen = () => {
               )}
             </ScrollView>
 
+            <View style={styles.sortRow}>
+              <Text style={styles.totalText}>
+                전체 {
+                  clothesData.filter(
+                    item => item.type !== 'add',
+                  ).length
+                }개
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    '정렬',
+                    '정렬 방식을 선택하세요',
+                    [
+                      {
+                        text: '최신순',
+                        onPress: () =>
+                          setSortOrder(
+                            'latest',
+                          ),
+                      },
+                      {
+                        text: '오래된순',
+                        onPress: () =>
+                          setSortOrder(
+                            'oldest',
+                          ),
+                      },
+                      {
+                        text: '취소',
+                        style: 'cancel',
+                      },
+                    ],
+                  )
+                }>
+                <Text style={styles.sortText}>
+                  {sortOrder === 'latest'
+                    ? '최신순'
+                    : '오래된순'} ▼
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <View
               style={
                 styles.gridContainer
@@ -615,7 +741,8 @@ const styles = StyleSheet.create({
   },
 
   iconButton: {
-    marginLeft: 14,
+    marginLeft: 12,
+    marginRight: 8,
   },
 
   summaryCard: {
@@ -696,7 +823,7 @@ const styles = StyleSheet.create({
   categoryContainer: {
     paddingLeft: 20,
     paddingRight: 8,
-    marginBottom: 22,
+    marginBottom: 15,
   },
 
   categoryChip: {
@@ -790,5 +917,78 @@ const styles = StyleSheet.create({
     fontWeight: '600',
 
     color: '#FF5C8A',
+  },
+
+  sortRow: {
+    marginHorizontal: 20,
+    marginBottom: 15,
+
+    flexDirection: 'row',
+    justifyContent:
+      'space-between',
+
+    alignItems: 'center',
+  },
+
+  totalText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#777777',
+  },
+
+  sortText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444444',
+  },
+
+  deleteButton: {
+    backgroundColor: '#FFE3EE',
+
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+
+    borderRadius: 999,
+  },
+
+  deleteButtonText: {
+    color: '#FF5C8A',
+
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  deleteBadge: {
+    position: 'absolute',
+
+    top: 6,
+    right: 6,
+
+    width: 22,
+    height: 22,
+
+    borderRadius: 11,
+
+    backgroundColor:
+      '#FF5C8A',
+
+    justifyContent:
+      'center',
+
+    alignItems:
+      'center',
+
+    zIndex: 999,
+  },
+  searchHeaderInput: {
+    flex: 1,
+
+    fontSize:15,
+
+    fontWeight: '700',
+
+    color: '#111111',
+
+    marginRight: 10,
   },
 });

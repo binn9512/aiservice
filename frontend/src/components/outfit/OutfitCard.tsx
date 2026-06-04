@@ -74,50 +74,44 @@ const OutfitCard = ({
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.8}
-              style={
-                styles.itemButton
-              }
+              style={styles.itemButton}
               onPress={() =>
                 onItemPress(item)
               }>
-              
-              <Text
-                numberOfLines={1}
-                style={
-                  styles.itemName
-                }>
-                {item.name}
-              </Text>
 
-              <Text
-                style={
-                  styles.typeText
-                }>
-                {isClosetItem
-                  ? '내 옷장'
-                  : '추천 상품'}
-              </Text>
+              <Image
+                source={
+                  typeof item.image === 'string'
+                    ? { uri: item.image }
+                    : item.image
+                }
+                style={{
+                  width: 50,
+                  height: 50,
+                  marginRight: 10,
+                }}
+                resizeMode="contain"
+              />
 
-              <View
-                style={
-                  styles.tagContainer
-                }>
-                {item.tags.map(
-                  tag => (
+              <View style={{ flex: 1 }}>
+                <Text
+                  numberOfLines={1}
+                  style={styles.itemName}>
+                  {item.name}
+                </Text>
+
+                <View style={styles.tagContainer}>
+                  {item.tags.slice(0, 1).map(tag => (
                     <View
                       key={tag}
-                      style={
-                        styles.tag
-                      }>
+                      style={styles.tag}>
                       <Text
-                        style={
-                          styles.tagText
-                        }>
+                        style={styles.tagText}>
                         #{tag}
                       </Text>
                     </View>
-                  ),
-                )}
+                  ))}
+                </View>
               </View>
             </TouchableOpacity>
           );

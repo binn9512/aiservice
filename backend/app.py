@@ -119,6 +119,44 @@ def get_image_path_by_id(clothing_id):
     except Exception as e:
         print(f"❌ DB 이미지 경로 조회 오류: {e}")
         return None
+    
+
+# 옷 ID를 기반으로 실제 옷 정보를 조회하는 내부 도우미 함수
+def get_item_info_by_id(clothing_id):
+    if not clothing_id or clothing_id == "null" or clothing_id == "":
+        return None
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT clothes_id,
+                   category,
+                   style,
+                   color,
+                   processed_image
+            FROM clothes
+            WHERE clothes_id = ?
+        """, (clothing_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return {
+            "id": row[0],
+            "category": row[1],
+            "style": row[2],
+            "color": row[3],
+            "image": row[4]
+        }
+
+    except Exception as e:
+        print(f"❌ 옷 정보 조회 오류: {e}")
+        return None
 
 # 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
@@ -141,10 +179,20 @@ def chat_api():
         bag_id = ai_json.get('bag')
         accessory_id = ai_json.get('accessory')
         
+        print(json.dumps({
+            "top": get_item_info_by_id(top_id),
+            "bottom": get_item_info_by_id(bottom_id),
+            "outer": get_item_info_by_id(outer_id),
+            "shoes": get_item_info_by_id(shoes_id),
+            "bag": get_item_info_by_id(bag_id),
+            "accessory": get_item_info_by_id(accessory_id)
+        }, indent=2, ensure_ascii=False))
+        
         # ID를 바탕으로 실제 웹에서 접근 가능한 이미지 주소로 치환
         return jsonify({
             "success": True,
             "message": ai_json.get('message'),
+
             "images": {
                 "top": get_image_path_by_id(top_id),
                 "bottom": get_image_path_by_id(bottom_id),
@@ -152,6 +200,15 @@ def chat_api():
                 "shoes": get_image_path_by_id(shoes_id),
                 "bag": get_image_path_by_id(bag_id),
                 "accessory": get_image_path_by_id(accessory_id)
+            },
+
+            "items": {
+                "top": get_item_info_by_id(top_id),
+                "bottom": get_item_info_by_id(bottom_id),
+                "outer": get_item_info_by_id(outer_id),
+                "shoes": get_item_info_by_id(shoes_id),
+                "bag": get_item_info_by_id(bag_id),
+                "accessory": get_item_info_by_id(accessory_id)
             }
         })
         
@@ -213,6 +270,51 @@ def delete_closet_item(item_id):
         return jsonify({
             "success": True,
             "message": "삭제 완료"
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+# ✏️ 옷 정보 수정 API
+@app.route(
+    '/api/closet/<int:item_id>',
+    methods=['PUT']
+)
+def update_closet_item(item_id):
+    try:
+        data = request.json
+
+        conn = sqlite3.connect(
+            'codi_v2.db'
+        )
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE clothes
+            SET category = ?,
+                style = ?,
+                color = ?
+            WHERE clothes_id = ?
+            """,
+            (
+                data['category'],
+                data['style'],
+                data['color'],
+                item_id,
+            ),
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "수정 완료"
         })
 
     except Exception as e:

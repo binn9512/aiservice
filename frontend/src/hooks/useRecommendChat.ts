@@ -16,9 +16,20 @@ import {
   initialMessage,
 } from '../data/mockMessages';
 
+const model1 = require(
+  '../assets/images/model1.jpeg',
+);
+
 const useRecommendChat = () => {
+
   const [loading, setLoading] =
     useState(false);
+    
+  const [recommendedItems, setRecommendedItems] =
+    useState<any>(null);
+
+  const [recommendedOutfits, setRecommendedOutfits] =
+    useState<any[]>([]);
 
   const [chatRooms, setChatRooms] =
     useState([
@@ -159,6 +170,44 @@ const useRecommendChat = () => {
         'AI RESPONSE:',
         data,
       );
+
+      console.log(
+        'RECOMMENDED ITEMS:',
+        data.items,
+      );
+
+      setRecommendedItems(data.items);
+
+      const items = [
+        data.items?.outer,
+        data.items?.top,
+        data.items?.bottom,
+        data.items?.shoes,
+        data.items?.bag,
+      ]
+        .filter(Boolean)
+        .map((item: any) => ({
+          id: String(item.id),
+          name: item.category,
+          image: `http://127.0.0.1:5001/${item.image}`,
+          type: 'closet',
+          tags: item.style
+            ? item.style
+                .split(',')
+                .map((tag: string) =>
+                  tag.trim(),
+                )
+            : [],
+          similarItems: [],
+        }));
+
+      setRecommendedOutfits([
+        {
+          id: '1',
+          modelImage: model1,
+          items,
+        },
+      ]);
 
       const aiMessage: Message =
         {
@@ -362,23 +411,16 @@ const useRecommendChat = () => {
 
   return {
     loading,
-
     currentChat,
-
     chatRooms,
-
     setChatRooms,
-
     currentChatId,
-
+    recommendedItems,
+    recommendedOutfits,
     handleSend,
-
     handleNewChat,
-
     handleSelectChat,
-
     handleDeleteChat,
-
     handleRenameChat,
   };
 };

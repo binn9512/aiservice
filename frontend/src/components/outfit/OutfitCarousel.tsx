@@ -28,12 +28,14 @@ const CARD_WIDTH = width * 0.92;
 const SPACING = 12;
 
 type Props = {
+  recommendedOutfits?: any[];
   onItemPress: (
     item: OutfitItem,
   ) => void;
 };
 
 const OutfitCarousel = ({
+  recommendedOutfits,
   onItemPress,
 }: Props) => {
   const flatListRef =
@@ -68,7 +70,12 @@ const OutfitCarousel = ({
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={mockOutfits}
+        data={
+          recommendedOutfits &&
+          recommendedOutfits.length > 0
+            ? recommendedOutfits
+            : mockOutfits
+        }
         horizontal
         bounces={false}
         pagingEnabled
@@ -89,7 +96,12 @@ const OutfitCarousel = ({
         }) => (
           <OutfitCard
             outfit={item}
-            outfits={mockOutfits}
+            outfits={
+              recommendedOutfits &&
+              recommendedOutfits.length > 0
+                ? recommendedOutfits
+                : mockOutfits
+            }
             index={index}
             onItemPress={
               onItemPress
@@ -106,7 +118,10 @@ const OutfitCarousel = ({
 
       <PaginationDots
         total={
-          mockOutfits.length
+          recommendedOutfits &&
+          recommendedOutfits.length > 0
+            ? recommendedOutfits.length
+            : mockOutfits.length
         }
         activeIndex={activeIndex}
       />

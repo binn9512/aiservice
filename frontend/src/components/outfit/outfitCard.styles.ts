@@ -62,10 +62,14 @@ export default StyleSheet.create({
 
     borderRadius: 12,
 
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 10,
 
     marginBottom: 10,
+
+    flexDirection: 'row',
+
+    alignItems: 'center',
   },
 
   itemName: {
