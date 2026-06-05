@@ -156,9 +156,41 @@ def chat_with_closet(user_msg, room_id="default"):
     try:
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
-        
-        if 'choices' in result:
-            ai_answer = result['choices'][0]['message']['content'].strip()
+
+        print("🔥 GROQ 응답:", result)
+
+        if 'choices' not in result:
+
+            if (
+                "error" in result
+                and result["error"].get("code")
+                == "rate_limit_exceeded"
+            ):
+                return json.dumps({
+                    "message":
+                        "현재 AI 서버 사용량이 많아 잠시 후 다시 시도해주세요 🙏",
+                    "outer": "null",
+                    "dress": "null",
+                    "top": "null",
+                    "bottom": "null",
+                    "shoes": "null",
+                    "bag": "null",
+                    "accessory": "null"
+                })
+
+            return json.dumps({
+                "message":
+                    "코디 생성 중 오류가 발생했습니다.",
+                "outer": "null",
+                "dress": "null",
+                "top": "null",
+                "bottom": "null",
+                "shoes": "null",
+                "bag": "null",
+                "accessory": "null"
+            })
+
+        ai_answer = result['choices'][0]['message']['content'].strip()
         
         # 🧠 [채빈님이 물어보신 핵심 구역 수정!] 
         # 공용이 아니라 '이 채팅방 공책'에만 질문과 답변을 저장합니다!

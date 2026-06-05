@@ -1,4 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -21,6 +24,9 @@ import {
 const model1 = require(
   '../assets/images/model1.jpeg',
 );
+
+const CHAT_STORAGE_KEY =
+  'MYVFF_CHAT_DATA';
 
 const useRecommendChat = () => {
 
@@ -45,6 +51,75 @@ const useRecommendChat = () => {
 
   const [currentChatId, setCurrentChatId] =
     useState(1);
+
+    useEffect(() => {
+      const loadChats =
+        async () => {
+          try {
+            const saved =
+              await AsyncStorage.getItem(
+                CHAT_STORAGE_KEY,
+              );
+
+            console.log(
+              'SAVED CHAT DATA:',
+               saved,
+            );
+
+            if (!saved) {
+              return;
+            }
+
+            const parsed =
+              JSON.parse(saved);
+
+            if (
+              parsed.chatRooms &&
+              parsed.currentChatId
+            ) {
+              setChatRooms(
+                parsed.chatRooms,
+              );
+
+              setCurrentChatId(
+                parsed.currentChatId,
+              );
+            }
+          } catch (error) {
+            console.log(
+              'CHAT LOAD ERROR',
+              error,
+            );
+          }
+        };
+
+      loadChats();
+      }, []);
+
+    useEffect(() => {
+    const saveChats =
+      async () => {
+        try {
+          await AsyncStorage.setItem(
+            CHAT_STORAGE_KEY,
+            JSON.stringify({
+              chatRooms,
+              currentChatId,
+            }),
+          );
+        } catch (error) {
+          console.log(
+            'CHAT SAVE ERROR',
+            error,
+          );
+        }
+      };
+
+    saveChats();
+  }, [
+    chatRooms,
+    currentChatId,
+  ]);
 
   const currentChat = useMemo(() => {
     return (
@@ -321,10 +396,23 @@ const useRecommendChat = () => {
       pinned: false,
     };
 
-    setChatRooms(prev => [
-      newChat,
-      ...prev,
-    ]);
+    setChatRooms(prev => {
+      const pinnedChats =
+        prev.filter(
+          room => room.pinned,
+        );
+
+      const normalChats =
+        prev.filter(
+          room => !room.pinned,
+        );
+
+      return [
+        ...pinnedChats,
+        newChat,
+        ...normalChats,
+      ];
+    });
 
     setCurrentChatId(
       newChatId,

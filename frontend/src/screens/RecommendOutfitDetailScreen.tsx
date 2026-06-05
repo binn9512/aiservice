@@ -9,6 +9,8 @@ import {
   TextInput,
 } from 'react-native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
   useNavigation,
   NavigationProp,
@@ -209,7 +211,7 @@ export default function RecommendOutfitDetailScreen() {
 
         <TouchableOpacity
           style={styles.sendButton}
-          onPress={() => {
+          onPress={async () => {
             const trimmed =
               inputText.trim();
 
@@ -217,16 +219,17 @@ export default function RecommendOutfitDetailScreen() {
               return;
             }
 
-            navigation.navigate(
-              'MainTabs',
-              {
-                screen: '코디추천',
-
-                params: {
-                  prompt: trimmed,
-                },
-              },
+            console.log(
+              '🔥 SEND BUTTON',
+              trimmed,
             );
+
+            await AsyncStorage.setItem(
+              'PENDING_PROMPT',
+              trimmed,
+            );
+
+            navigation.goBack();
 
             setInputText('');
           }}>

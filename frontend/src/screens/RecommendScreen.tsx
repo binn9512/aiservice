@@ -2,6 +2,7 @@ import React, {
   useEffect,
   useRef,
   useState,
+  useCallback,
 } from 'react';
 
 import {
@@ -15,7 +16,11 @@ import {
 import {
   useRoute,
   RouteProp,
+  useNavigation,
+  useFocusEffect,
 } from '@react-navigation/native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import ChatBubble from '../components/chat/ChatBubble';
 
@@ -44,6 +49,9 @@ import styles from '../styles/recommend.styles';
 const RecommendScreen = () => {
   const route =
     useRoute<RouteProp<any>>();
+
+  const navigation = 
+    useNavigation<any>();
 
   const scrollRef =
     useRef<ScrollView>(null);
@@ -90,14 +98,29 @@ const RecommendScreen = () => {
     setModalVisible(true);
   };
 
-  useEffect(() => {
-    const prompt =
-      route.params?.prompt;
+  useFocusEffect(
+    useCallback(() => {
+      const loadPrompt =
+        async () => {
+          const prompt =
+            await AsyncStorage.getItem(
+              'PENDING_PROMPT',
+            );
 
-    if (prompt) {
-      handleSend(prompt);
-    }
-  }, [route.params]);
+          if (!prompt) {
+            return;
+          }
+
+          await AsyncStorage.removeItem(
+            'PENDING_PROMPT',
+          );
+
+          handleSend(prompt);
+        };
+
+      loadPrompt();
+    }, []),
+  );
 
   const handlePinChat = (
     roomId: number,
@@ -114,20 +137,23 @@ const RecommendScreen = () => {
             : room,
       );
 
-      return updated.sort(
-        (a, b) => {
-          if (
-            a.pinned ===
-            b.pinned
-          ) {
-            return 0;
-          }
+      const sortedRooms =
+        [...updated].sort(
+          (a, b) => {
+            if (
+              a.pinned ===
+              b.pinned
+            ) {
+              return 0;
+            }
 
-          return a.pinned
-            ? -1
-            : 1;
-        },
-      );
+            return a.pinned
+              ? -1
+              : 1;
+          },
+        );
+
+      return sortedRooms;
     });
 
     setMenuChatId(null);
