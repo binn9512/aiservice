@@ -97,7 +97,11 @@ const OutfitCard = ({
                 resizeMode="contain"
               />
 
-              <View style={{ flex: 1 }}>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                }}>
                 <Text
                   numberOfLines={1}
                   style={styles.itemName}>

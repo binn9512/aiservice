@@ -64,16 +64,18 @@ const OutfitCarousel = ({
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  if (
+    !recommendedOutfits ||
+    recommendedOutfits.length === 0
+  ) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={
-          recommendedOutfits &&
-          recommendedOutfits.length > 0
-            ? recommendedOutfits
-            : mockOutfits
-        }
+        data={recommendedOutfits || []}
         horizontal
         bounces={false}
         pagingEnabled
@@ -121,7 +123,7 @@ export default OutfitCarousel;
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: 2,
   },
 
   listContent: {

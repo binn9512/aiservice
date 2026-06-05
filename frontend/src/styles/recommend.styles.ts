@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    flexGrow: 1,
+
 
     paddingHorizontal: 16,
     paddingTop: 12,

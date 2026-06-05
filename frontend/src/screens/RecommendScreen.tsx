@@ -175,13 +175,45 @@ const RecommendScreen = () => {
           }>
 
           {currentChat.messages.map(
-            message => (
-              <ChatBubble
-                key={message.id}
-                role={message.role}
-                text={message.text}
-              />
-            ),
+            item => {
+              if (
+                item.type ===
+                'message'
+              ) {
+                return (
+                  <View
+                    key={item.id}
+                    style={{
+                      marginBottom: 0,
+                    }}>
+                    <ChatBubble
+                      role={item.role}
+                      text={item.text}
+                    />
+                  </View>
+                );
+              }
+
+              return (
+                <View
+                  key={item.id}
+                  style={{
+                    marginBottom:
+                      item.type === 'outfit'
+                        ? 16
+                        : 16,
+                  }}>
+                  <OutfitCarousel
+                    recommendedOutfits={
+                      item.outfits
+                    }
+                    onItemPress={
+                      handleItemPress
+                    }
+                  />
+                </View>
+              );
+            },
           )}
 
           {loading && (
@@ -191,17 +223,7 @@ const RecommendScreen = () => {
             />
           )}
 
-          {currentChat.messages
-            .length >= 3 && (
-            <OutfitCarousel
-              recommendedOutfits={
-                recommendedOutfits
-              }
-              onItemPress={
-                handleItemPress
-              }
-            />
-          )}
+          
 
           <View
             style={{height: 20}}

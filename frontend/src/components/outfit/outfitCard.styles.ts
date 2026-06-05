@@ -13,38 +13,25 @@ export default StyleSheet.create({
   card: {
     width: CARD_WIDTH,
 
-    aspectRatio: 1,
+    aspectRatio: 1.1,
 
     flexDirection: 'row',
 
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF3F7',
 
     borderRadius: 20,
 
-    padding: 12,
+    padding: 16,
 
-    marginRight: 12,
-
-    shadowColor: '#000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-
-    shadowOpacity: 0.08,
-
-    shadowRadius: 10,
-
-    elevation: 4,
+    marginHorizontal: 4,
   },
 
   modelContainer: {
-    width: '45%',
+    width: '42%',
 
     height: '100%',
 
-    backgroundColor: '#F2F0F1',
+    backgroundColor: '#ffffff',
 
     borderRadius: 16,
 
@@ -62,7 +49,7 @@ export default StyleSheet.create({
   itemSection: {
     flex: 1,
 
-    marginLeft: 12,
+    marginLeft:15,
 
     height: '100%',
 
@@ -72,11 +59,11 @@ export default StyleSheet.create({
   itemButton: {
     flex: 1,
 
-    backgroundColor: '#F2F0F1',
+    backgroundColor: '#ffffff',
 
     borderRadius: 12,
 
-    paddingHorizontal: 10,
+    paddingHorizontal: 18,
 
     marginBottom: 8,
 
@@ -105,8 +92,6 @@ export default StyleSheet.create({
 
   tagContainer: {
     flexDirection: 'row',
-
-    flexWrap: 'wrap',
 
     marginTop: 5,
   },

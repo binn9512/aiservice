@@ -9,7 +9,9 @@ import {
 
 import {
   ChatRoom,
-  Message,
+  ChatMessage,
+  ChatItem,
+  OutfitMessage,
 } from '../types/chat';
 
 import {
@@ -32,7 +34,7 @@ const useRecommendChat = () => {
     useState<any[]>([]);
 
   const [chatRooms, setChatRooms] =
-    useState([
+    useState<ChatRoom[]>([
       {
         id: 1,
         title: '새 채팅',
@@ -72,11 +74,10 @@ const useRecommendChat = () => {
       return;
     }
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now(),
-
+      type: 'message',
       role: 'user',
-
       text: trimmedText,
     };
 
@@ -202,24 +203,26 @@ const useRecommendChat = () => {
           similarItems: [],
         }));
 
-      setRecommendedOutfits([
-        {
-          id: '1',
-          modelImage: model1,
-          items,
-        },
-      ]);
+      const aiMessage: ChatMessage = {
+        id: Date.now() + 1,
+        type: 'message',
+        role: 'ai',
+        text:
+          data.message ||
+          '코디 추천 결과가 도착했어요 ✨',
+      };
 
-      const aiMessage: Message =
-        {
-          id: Date.now() + 1,
-
-          role: 'ai',
-
-          text:
-            data.message ||
-            '코디 추천 결과가 도착했어요 ✨',
-        };
+      const outfitMessage: OutfitMessage = {
+        id: Date.now() + 2,
+        type: 'outfit',
+        outfits: [
+          {
+            id: String(Date.now()),
+            modelImage: model1,
+            items,
+          },
+        ],
+      };
 
       setChatRooms(prev =>
         prev.map(room => {
@@ -233,6 +236,7 @@ const useRecommendChat = () => {
               messages: [
                 ...room.messages,
                 aiMessage,
+                outfitMessage,
               ],
             };
           }
@@ -267,10 +271,10 @@ const useRecommendChat = () => {
         String(error),
       );
 
-      const errorMessage: Message =
+      const errorMessage: ChatMessage =
         {
           id: Date.now() + 1,
-
+          type: 'message',
           role: 'ai',
 
           text:
