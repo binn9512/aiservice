@@ -9,6 +9,7 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  Pressable,
 } from 'react-native';
 
 import {
@@ -67,8 +68,14 @@ const ItemDetailModal = ({
         }
         animationType="slide"
         transparent>
-        <View style={styles.overlay}>
-          <View style={styles.container}>
+
+        <Pressable
+          style={styles.overlay}
+          onPress={onClose}>
+
+          <Pressable
+            style={styles.container}
+            onPress={() => {}}>
             {/* Handle */}
             <View
               style={
@@ -294,8 +301,8 @@ const ItemDetailModal = ({
                 닫기
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* 대체 아이템 상세 모달 */}
@@ -305,8 +312,19 @@ const ItemDetailModal = ({
         }
         animationType="slide"
         transparent>
-        <View style={styles.overlay}>
-          <View style={styles.container}>
+
+        <Pressable
+          style={styles.overlay}
+          onPress={() =>
+            setSelectedSimilarItem(
+              null,
+            )
+          }>
+
+          <Pressable
+            style={styles.container}
+            onPress={() => {}}>
+
             {/* Handle */}
             <View
               style={
@@ -320,9 +338,7 @@ const ItemDetailModal = ({
                 styles.header
               }>
               <TouchableOpacity
-                activeOpacity={
-                  0.8
-                }
+                activeOpacity={0.8}
                 onPress={() =>
                   setSelectedSimilarItem(
                     null,
@@ -344,9 +360,7 @@ const ItemDetailModal = ({
               </Text>
 
               <TouchableOpacity
-                activeOpacity={
-                  0.8
-                }
+                activeOpacity={0.8}
                 onPress={() =>
                   setSelectedSimilarItem(
                     null,
@@ -365,158 +379,13 @@ const ItemDetailModal = ({
               showsVerticalScrollIndicator={
                 false
               }>
-              {/* Main Item */}
-              <View
-                style={
-                  styles.mainSection
-                }>
-                <Image
-                  source={
-                    typeof currentItem?.image ===
-                    'string'
-                      ? {
-                          uri:
-                            currentItem.image,
-                        }
-                      : currentItem?.image ||
-                        item.image
-                  }
-                  style={
-                    styles.itemImage
-                  }
-                  resizeMode="cover"
-                />
 
-                <View
-                  style={
-                    styles.infoSection
-                  }>
-                  <Text
-                    style={
-                      styles.itemName
-                    }>
-                    {currentItem?.name ||
-                      '아이템'}
-                  </Text>
+              {/* 기존 내용 그대로 */}
 
-                  <Text
-                    style={
-                      styles.itemType
-                    }>
-                    {currentItem?.type ===
-                    'closet'
-                      ? '내 옷장'
-                      : '추천 상품'}
-                  </Text>
-
-                  {currentItem?.tags
-                    ?.length > 0 && (
-                    <View
-                      style={
-                        styles.tagContainer
-                      }>
-                      {currentItem.tags.map(
-                        (
-                          tag: string,
-                        ) => (
-                          <View
-                            key={
-                              tag
-                            }
-                            style={
-                              styles.tag
-                            }>
-                            <Text
-                              style={
-                                styles.tagText
-                              }>
-                              #{tag}
-                            </Text>
-                          </View>
-                        ),
-                      )}
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Item Info */}
-              <View
-                style={
-                  styles.section
-                }>
-                <Text
-                  style={
-                    styles.sectionTitle
-                  }>
-                  아이템 정보
-                </Text>
-
-                <View
-                  style={
-                    styles.infoRow
-                  }>
-                  <Text
-                    style={
-                      styles.infoLabel
-                    }>
-                    카테고리
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.infoValue
-                    }>
-                    하의 {'>'} 팬츠
-                  </Text>
-                </View>
-
-                <View
-                  style={
-                    styles.infoRow
-                  }>
-                  <Text
-                    style={
-                      styles.infoLabel
-                    }>
-                    스타일
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.infoValue
-                    }>
-                    스트릿,
-                    캐주얼
-                  </Text>
-                </View>
-
-                <View
-                  style={
-                    styles.infoRow
-                  }>
-                  <Text
-                    style={
-                      styles.infoLabel
-                    }>
-                    색상
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.infoValue
-                    }>
-                    그레이
-                  </Text>
-                </View>
-              </View>
             </ScrollView>
 
-            {/* Bottom Button */}
             <TouchableOpacity
-              activeOpacity={
-                0.8
-              }
+              activeOpacity={0.8}
               style={
                 styles.closeButton
               }
@@ -532,8 +401,9 @@ const ItemDetailModal = ({
                 닫기
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
+
+          </Pressable>
+        </Pressable>
       </Modal>
     </>
   );

@@ -223,6 +223,46 @@ export default function ClothingDetailScreen() {
     setEditColor] =
     useState(item.color);
 
+    async function updateClothingName(
+        newName: string,
+        ) {
+        try {
+            const response =
+            await fetch(
+                `${API_BASE_URL}/api/closet/${item.id}`,
+                {
+                method: 'PUT',
+                headers: {
+                    'Content-Type':
+                    'application/json',
+                },
+                body: JSON.stringify({
+                    category: item.category,
+                    style: item.style,
+                    color: item.color,
+                    name: newName,
+                }),
+                },
+            );
+
+            if (!response.ok) {
+            throw new Error();
+            }
+
+            Alert.alert(
+            '완료',
+            '이름이 수정되었습니다.',
+            );
+
+            navigation.goBack();
+        } catch {
+            Alert.alert(
+            '오류',
+            '수정 실패',
+            );
+        }
+        }
+
     async function updateClothingInfo() {
         try {
             const response =
@@ -235,9 +275,9 @@ export default function ClothingDetailScreen() {
                     'application/json',
                 },
                 body: JSON.stringify({
-                    category: editCategory,
-                    style: editStyle,
-                    color: editColor,
+                category: editCategory,
+                style: editStyle,
+                color: editColor,
                 }),
                 },
             );
@@ -350,9 +390,41 @@ export default function ClothingDetailScreen() {
         resizeMode="contain"
       />
 
-      <Text style={styles.name}>
-        {item.color} {item.category}
+      <View style={styles.nameRow}>
+        <Text style={styles.name}>
+            {item.name?.trim()
+            ? item.name
+            : `${item.color} ${item.category}`}
         </Text>
+
+        <TouchableOpacity
+            style={styles.pencilButton}
+            onPress={() =>
+                Alert.prompt(
+                '의류 이름 수정',
+                '',
+                text => {
+                    if (!text?.trim()) {
+                    return;
+                    }
+
+                    updateClothingName(
+                    text.trim(),
+                    );
+                },
+                'plain-text',
+                item.name || '',
+                )
+            }>
+
+            <Ionicons
+                name="pencil"
+                size={21}
+                color="#FF5C8A"
+            />
+
+            </TouchableOpacity>
+        </View>
 
         <View style={styles.infoCard}>
             <Text style={styles.label}>
@@ -408,13 +480,15 @@ export default function ClothingDetailScreen() {
         onPress={() =>
             setShowEditModal(true)
         }>
+
         <Text
-          style={
-            styles.editButtonText
-          }>
-          정보 수정
+            style={styles.editButtonText}>
+            정보 수정
         </Text>
-      </TouchableOpacity>
+
+        </TouchableOpacity>
+
+      
 
       <Modal
         visible={showEditModal}
@@ -868,7 +942,7 @@ const styles =
     editButton: {
       marginTop: 5,
 
-      marginHorizontal: 15,
+      marginHorizontal: 20,
 
       height: 52,
 
@@ -995,4 +1069,21 @@ const styles =
 
         marginHorizontal: 5,
         },
+
+    nameRow: {
+        flexDirection: 'row',
+
+        alignItems: 'center',
+
+        justifyContent: 'center',
+
+        marginBottom: 2,
+
+        gap: 8,
+        },
+
+    pencilButton: {
+        marginLeft: -15,
+        marginBottom: 16,
+    },
   });

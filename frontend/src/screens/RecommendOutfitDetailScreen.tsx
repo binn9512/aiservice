@@ -18,11 +18,11 @@ import {
   RouteProp,
 } from '@react-navigation/native';
 
-type OutfitItem = {
-  name: string;
-  sub: string;
-  image: any;
-};
+import ItemDetailModal from '../components/modal/ItemDetailModal';
+
+import {
+  OutfitItem,
+} from '../data/mockOutfits';
 
 type Outfit = {
   id: string;
@@ -67,6 +67,18 @@ export default function RecommendOutfitDetailScreen() {
 
   const [inputText, setInputText] =
     useState('');
+
+  const [
+    selectedItem,
+    setSelectedItem,
+  ] = useState<OutfitItem | null>(
+    null,
+  );
+
+  const [
+    modalVisible,
+    setModalVisible,
+  ] = useState(false);
 
   const current = outfits[index];
 
@@ -115,14 +127,19 @@ export default function RecommendOutfitDetailScreen() {
                 item: OutfitItem,
                 idx: number,
               ) => (
-                <View
+                <TouchableOpacity
                   key={idx}
-                  style={styles.itemRow}>
+                  activeOpacity={0.8}
+                  style={styles.itemRow}
+                  onPress={() => {
+                    setSelectedItem(item);
+                    setModalVisible(true);
+                  }}>
 
                   <Image
                     source={
                       typeof item.image === 'string'
-                        ? { uri: item.image }
+                        ? {uri: item.image}
                         : item.image
                     }
                     style={styles.itemImage}
@@ -136,12 +153,14 @@ export default function RecommendOutfitDetailScreen() {
                       {item.name}
                     </Text>
 
-                    <Text
-                      style={styles.itemSub}>
-                      {item.sub}
+                    <Text style={styles.itemSub}>
+                      {item.type === 'closet'
+                        ? '내 옷장'
+                        : '추천 상품'}
                     </Text>
                   </View>
-                </View>
+
+                </TouchableOpacity>
               ),
             )}
             </View>
@@ -239,6 +258,15 @@ export default function RecommendOutfitDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <ItemDetailModal
+        visible={modalVisible}
+        item={selectedItem}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedItem(null);
+        }}
+      />
     </>
   );
 }
@@ -336,6 +364,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
 
     marginBottom: 14,
+
+    marginLeft: 2,
   },
 
   itemRow: {
