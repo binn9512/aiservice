@@ -244,7 +244,8 @@ def get_closet():
                 category,
                 style,
                 color,
-                name
+                name,
+                analyzed_at
             FROM clothes
         """)
         rows = cursor.fetchall()
@@ -253,13 +254,14 @@ def get_closet():
         result = []
         for row in rows:
             result.append({
-            "id": row[0],
-            "image": f"http://127.0.0.1:5001/{row[1]}",
-            "category": row[2],
-            "style": row[3],
-            "color": row[4],
-            "name": row[5]
-        })
+                "id": row[0],
+                "image": f"http://127.0.0.1:5001/{row[1]}",
+                "category": row[2],
+                "style": row[3],
+                "color": row[4],
+                "name": row[5],
+                "analyzed_at": row[6]
+            })
 
         return jsonify(result)
     except Exception as e:

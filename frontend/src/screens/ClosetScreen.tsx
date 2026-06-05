@@ -366,6 +366,29 @@ const ClosetScreen = () => {
           },
         );
 
+        const latestItem = clothesData
+          .filter(
+            item =>
+              item.type !== 'add' &&
+              item.analyzed_at,
+          )
+          .sort(
+            (a, b) =>
+              new Date(
+                b.analyzed_at,
+              ).getTime() -
+              new Date(
+                a.analyzed_at,
+              ).getTime(),
+          )[0];
+
+        const latestUpdateText =
+          latestItem?.analyzed_at
+            ? latestItem.analyzed_at
+                .split(' ')[0]
+                .replaceAll('-', '.')
+            : '-';
+
   const renderClothingItem =
     ({item}: any) => {
       if (item.type === 'add') {
@@ -591,7 +614,7 @@ const ClosetScreen = () => {
                     styles.updateText
                   }>
                   최근 업데이트:
-                  방금 전
+                  {` ${latestUpdateText}`}
                 </Text>
               </View>
             </View>
