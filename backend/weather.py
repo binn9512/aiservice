@@ -6,12 +6,17 @@ def get_today_weather_and_outfit(api_key, city="Seoul"):
     OpenWeather API를 연동하여 날씨 정보와 코디 추천 멘트를 반환합니다.
     """
     # 1. API 요청 URL 세팅 (units=metric: 섭씨온도, lang=kr: 한국어)
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=kr"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=kr"
 
     try:
-        response = requests.get(url)
+        print("🌤 OpenWeather 요청 시작")
+        response = requests.get(
+            url,
+            timeout=3
+        )
         response.raise_for_status() # 에러 발생 시 예외 처리
         data = response.json()
+        print("✅ OpenWeather 응답 성공")
 
         # 2. 데이터 추출 (온도 및 날씨 상태)
         temp = round(data['main']['temp'])        # 현재 온도 (반올림해서 정수로)

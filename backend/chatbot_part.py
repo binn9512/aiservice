@@ -4,6 +4,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from weather import get_today_weather_and_outfit
 
 # .env 파일에 적힌 비밀키들을 컴퓨터 메모리로 읽어옵니다.
 load_dotenv() 
@@ -41,10 +42,29 @@ def chat_with_closet(user_msg, room_id="default"):
     room_history = chat_history[room_id]
     my_items = get_closet_data()
 
+    # 현재 날씨 조회
+    weather_info = get_today_weather_and_outfit(
+        "e62c1806eb7b13df76cbdfb855dff027"
+    )
+
+    if weather_info:
+        weather_text = f"""
+    현재 날씨:
+    - 상태: {weather_info['title']}
+    - 날씨 설명: {weather_info['message']}
+    """
+    else:
+        weather_text = """
+    현재 날씨 정보를 가져오지 못했습니다.
+    """
+
     
     system_prompt = f"""
     너는 한국의 2030 세대 패션 스타일링 전문가야.
-    
+
+    [현재 날씨]
+    {weather_text}
+
     [내 옷장 데이터]
     {my_items}
 
@@ -52,6 +72,10 @@ def chat_with_closet(user_msg, room_id="default"):
     1. 사용자가 '하객룩'이나 '격식'을 원하면 페미닌, 미니멀, 셔츠, 슬랙스 위주로 매칭해.
     2. 사용자가 '캐주얼'이나 '편하게'를 원하면 티셔츠, 맨투맨, 데님 팬츠를 우선적으로 골라.
     3. 색상 밸런스(톤온톤)를 고려해서 어색하지 않게 추천해.
+    4. 현재 날씨를 반드시 고려해서 코디를 추천해.
+    5. 더운 날씨에는 반팔, 슬리브리스, 얇은 소재를 우선 고려해.
+    6. 쌀쌀한 날씨에는 가디건, 자켓, 코트 등의 아우터를 적극 활용해.
+    7. 비나 눈이 오는 경우 밝은 색보다 관리가 쉬운 아이템과 아우터를 우선 추천해.
 
     [★ 작동 로직 및 상황 판단 규칙 - 매우 중요 ★]
     대화 기록을 처음부터 끝까지 읽고, 아래 2가지 상황 중 어디에 해당하는지 판단해서 답변해라.

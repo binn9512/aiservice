@@ -58,7 +58,7 @@ def load_csv_to_db():
             for row in reader:
                 cursor.execute("""
                     INSERT INTO clothes (user_id, category, style,color, processed_image, original_image, analyzed_at, shop_link)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (row['user_id'], row['category'], row['style'],row['color'],
                       row['processed_image'], row['original_image'], 
                       row['analyzed_at'], row.get('shop_link', '')))

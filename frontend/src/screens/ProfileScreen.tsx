@@ -3,6 +3,8 @@ import React, {
   useEffect,
 } from 'react';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
   View,
   Text,
@@ -103,27 +105,79 @@ const ProfileScreen = () => {
         defaultProfile,
     );
 
-    const [weather, setWeather] =
-  useState({
-    title: '날씨 불러오는 중...',
-    message: '',
-  });
+  const [weather, setWeather] =
+    useState({
+      title: '오늘의 날씨',
+      message: '날씨 정보를 불러오는 중입니다.',
+    });
 
   useEffect(() => {
-  fetch(
-    'http://192.168.219.125:5001/weather',
-  )
-    .then(res => res.json())
-    .then(data => {
-      setWeather(data);
-    })
-    .catch(error => {
-      console.log(
-        '날씨 API 오류:',
-        error,
-      );
-    });
-}, []);
+    const loadWeather = async () => {
+      try {
+        // 저장된 날씨 먼저 표시
+        const cachedWeather =
+          await AsyncStorage.getItem(
+            'weather_cache',
+          );
+
+        if (cachedWeather) {
+        const parsed =
+          JSON.parse(cachedWeather);
+
+        setWeather(parsed);
+
+        fetch(
+          'http://192.168.219.123:5001/weather',
+        )
+          .then(res => res.json())
+          .then(async data => {
+            setWeather(data);
+
+            await AsyncStorage.setItem(
+              'weather_cache',
+              JSON.stringify(data),
+            );
+          })
+          .catch(console.log);
+
+        return;
+      }
+
+        // 최신 날씨 요청
+        const response =
+          await fetch(
+            'http://192.168.219.123:5001/weather',
+          );
+
+        console.log(
+          'weather response:',
+          response.status,
+        );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'weather data:',
+          data,
+        );
+
+        setWeather(data);
+
+        await AsyncStorage.setItem(
+          'weather_cache',
+          JSON.stringify(data),
+        );
+      } catch (error) {
+        console.error(
+          '날씨 API 오류:',
+          error,
+        );
+      }
+    };
+
+    loadWeather();
+  }, []);
 
   function restartSurvey() {
     navigation.navigate(
