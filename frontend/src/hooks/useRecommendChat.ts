@@ -249,7 +249,11 @@ const useRecommendChat = () => {
 
       console.log(
         'RECOMMENDED ITEMS:',
-        data.items,
+        JSON.stringify(
+          data.items,
+          null,
+          2,
+        ),
       );
 
       setRecommendedItems(data.items);
@@ -265,7 +269,7 @@ const useRecommendChat = () => {
         .filter(Boolean)
         .map((item: any) => ({
           id: String(item.id),
-          name: item.category,
+          name: item.name || item.category,
           image: `http://127.0.0.1:5001/${item.image}`,
           type: 'closet',
           tags: item.style

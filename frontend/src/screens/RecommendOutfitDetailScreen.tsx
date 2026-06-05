@@ -176,6 +176,10 @@ export default function RecommendOutfitDetailScreen() {
             추천 질문
           </Text>
 
+          <Text style={styles.questionSubTitle}>
+            추천 질문을 누른 뒤 아래 입력창에서 자유롭게 수정할 수 있어요
+          </Text>
+
           <TouchableOpacity
             style={styles.questionButton}
             onPress={() =>
@@ -192,11 +196,11 @@ export default function RecommendOutfitDetailScreen() {
             style={styles.questionButton}
             onPress={() =>
               setInputText(
-                '현재 아이템들은 유지하고 다른 코디 보여줘',
+                '비슷한 분위기의 다른 코디 보여줘',
               )
             }>
             <Text style={styles.questionText}>
-              ✨ 현재 아이템들은 유지하고 다른 코디 보여줘
+              ✨ 비슷한 분위기의 다른 코디 보여줘 
             </Text>
           </TouchableOpacity>
 
@@ -420,7 +424,17 @@ const styles = StyleSheet.create({
 
     color: '#111',
 
-    marginBottom: 3,
+    marginBottom: -4,
+  },
+
+  questionSubTitle: {
+    fontSize: 13,
+
+    color: '#666',
+
+    marginBottom: 5,
+
+    marginHorizontal: 1,
   },
 
   questionButton: {

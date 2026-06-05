@@ -132,10 +132,11 @@ def get_item_info_by_id(clothing_id):
 
         cursor.execute("""
             SELECT clothes_id,
-                   category,
-                   style,
-                   color,
-                   processed_image
+                category,
+                style,
+                color,
+                processed_image,
+                name
             FROM clothes
             WHERE clothes_id = ?
         """, (clothing_id,))
@@ -151,7 +152,8 @@ def get_item_info_by_id(clothing_id):
             "category": row[1],
             "style": row[2],
             "color": row[3],
-            "image": row[4]
+            "image": row[4],
+            "name": row[5]
         }
 
     except Exception as e:
