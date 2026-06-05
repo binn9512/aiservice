@@ -12,12 +12,18 @@ import {
   SafeAreaView,
   ScrollView,
   Pressable,
+  Image,
+  TouchableOpacity,
 } from 'react-native';
 
 import {
   useNavigation,
   useRoute,
 } from '@react-navigation/native';
+
+import {
+  launchImageLibrary,
+} from 'react-native-image-picker';
 
 type ProfileData = {
   style: string;
@@ -179,6 +185,50 @@ const ProfileScreen = () => {
     loadWeather();
   }, []);
 
+  const [faceImage, setFaceImage] =
+    useState<string | null>(null);
+
+    useEffect(() => {
+      const loadFaceImage = async () => {
+        const savedImage =
+          await AsyncStorage.getItem(
+            'USER_FACE_IMAGE',
+          );
+
+        if (savedImage) {
+          setFaceImage(savedImage);
+        }
+      };
+
+      loadFaceImage();
+    }, []);
+
+    const handleFaceRegister =
+      async () => {
+        const result =
+          await launchImageLibrary({
+            mediaType: 'photo',
+            selectionLimit: 1,
+          });
+
+        if (
+          result.didCancel ||
+          !result.assets?.[0]?.uri
+        ) {
+          return;
+        }
+
+        const imageUri =
+          result.assets[0].uri;
+
+        await AsyncStorage.setItem(
+          'USER_FACE_IMAGE',
+          imageUri,
+        );
+
+        setFaceImage(imageUri);
+      };
+
   function restartSurvey() {
     navigation.navigate(
       'Survey',
@@ -213,81 +263,62 @@ const ProfileScreen = () => {
             style={
               styles.profileRow
             }>
-            <View
-              style={
-                styles.avatar
-              }>
-              <Text
-                style={
-                  styles.avatarText
-                }>
-                여성
+            <TouchableOpacity
+              style={styles.avatar}
+              activeOpacity={0.8}
+              onPress={handleFaceRegister}>
+
+              {faceImage ? (
+                <Image
+                  source={{
+                    uri: faceImage,
+                  }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <>
+                  <Text
+                    style={
+                      styles.avatarText
+                    }>
+                    얼굴 등록
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.profileTextBox}>
+
+              <Text style={styles.avatarTitle}>
+                AI 아바타
               </Text>
+
+              <Text style={styles.avatarDesc}>
+                얼굴 사진을 등록하고 코디 시뮬레이션에
+              </Text>
+
+              <Text style={styles.avatarDesc}>
+                사용할 AI 아바타를 생성해보세요.
+              </Text>
+
+              <Pressable
+                style={styles.avatarButton}
+                onPress={() =>
+                  navigation.navigate(
+                    'AvatarGenerate',
+                  )
+                }>
+                
+                <Text
+                  style={
+                    styles.avatarButtonText
+                  }>
+                  AI 아바타 생성하기 →
+                </Text>
+
+              </Pressable>
+
             </View>
-
-            <View
-              style={
-                styles.profileTextBox
-              }>
-              <Text
-                style={
-                  styles.caption
-                }>
-                나의 스타일 요약
-              </Text>
-
-              <Text
-                style={
-                  styles.styleTitle
-                }>
-                {
-                  profileData.style
-                }
-              </Text>
-
-              <Text
-                style={
-                  styles.caption
-                }>
-                선택한 스타일을
-                바탕으로
-              </Text>
-
-              <Text
-                style={
-                  styles.caption
-                }>
-                오늘의 코디를
-                추천해드려요.
-              </Text>
-            </View>
-          </View>
-
-          <View
-            style={
-              styles.chipRow
-            }>
-            <Text
-              style={styles.chip}>
-              {
-                profileData.colorMood
-              }
-            </Text>
-
-            <Text
-              style={styles.chip}>
-              {
-                profileData.bodyType
-              }
-            </Text>
-
-            <Text
-              style={styles.chip}>
-              {
-                profileData.highlight
-              }{' '}
-              강조
-            </Text>
           </View>
         </View>
 
@@ -449,7 +480,7 @@ const styles = StyleSheet.create({
     borderRadius: 43,
 
     backgroundColor:
-      '#F4D7DC',
+      '#fde6ea',
 
     alignItems: 'center',
 
@@ -460,8 +491,21 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    color: '#666666',
-    fontWeight: '600',
+    color: '#444',
+    fontWeight: '500',
+    marginLeft: 1,
+    marginTop: 1,
+
+    alignItems: 'center',
+
+    justifyContent:
+      'center',
+  },
+
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 43,
   },
 
   profileTextBox: {
@@ -481,6 +525,43 @@ const styles = StyleSheet.create({
     color: '#FF5C8A',
 
     marginVertical: 5,
+  },
+
+  avatarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FF5C8A',
+    marginBottom: 2,
+    marginLeft: 4,
+  },
+
+  avatarDesc: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 20,
+    marginLeft: 5,
+  },
+
+  avatarButton: {
+    marginTop: 8,
+
+    backgroundColor: '#FF5C8A',
+
+    borderRadius: 14,
+
+    height: 40,
+
+    justifyContent: 'center',
+
+    alignItems: 'center',
+  },
+
+  avatarButtonText: {
+    color: '#FFFFFF',
+
+    fontWeight: '700',
+
+    fontSize: 14,
   },
 
   chipRow: {

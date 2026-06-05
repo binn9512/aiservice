@@ -17,6 +17,15 @@ from './src/screens/SurveyScreen';
 import ClothingDetailScreen
 from './src/screens/ClothingDetailScreen';
 
+import AvatarGenerateScreen
+from './src/screens/AvatarGenerateScreen';
+
+import AvatarGeneratingScreen
+from './src/screens/AvatarGeneratingScreen';
+
+import AvatarResultScreen
+from './src/screens/AvatarResultScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -47,6 +56,25 @@ export default function App() {
         <Stack.Screen
           name="ClothingDetail"
           component={ClothingDetailScreen}
+        />
+
+        <Stack.Screen
+          name="AvatarGenerate"
+          component={AvatarGenerateScreen}
+        />
+
+        <Stack.Screen
+          name="AvatarGenerating"
+          component={
+            AvatarGeneratingScreen
+          }
+        />
+
+        <Stack.Screen
+          name="AvatarResult"
+          component={
+            AvatarResultScreen
+          }
         />
 
       </Stack.Navigator>
