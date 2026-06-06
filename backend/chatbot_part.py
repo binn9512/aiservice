@@ -147,7 +147,7 @@ def chat_with_closet(user_msg, room_id="default"):
     messages_to_send.append({"role": "user", "content": user_msg}) # 현재 질문 추가
     
     data = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "llama-3.1-8b-instant",
         "messages": messages_to_send,
         "temperature": 0.3 # 설명을 해야 하니 창의성을 살짝(0.3) 올려줍니다.
     }
