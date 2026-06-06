@@ -102,14 +102,10 @@ const RecommendScreen = () => {
     useCallback(() => {
       const loadPrompt =
         async () => {
-          console.log('🔥 loadPrompt 실행');
-
           const prompt =
             await AsyncStorage.getItem(
               'PENDING_PROMPT',
             );
-
-          console.log('🔥 PENDING_PROMPT =', prompt);
 
           if (!prompt) {
             return;
@@ -119,9 +115,7 @@ const RecommendScreen = () => {
             'PENDING_PROMPT',
           );
 
-          console.log('🔥 handleSend 호출');
-
-          handleSend(prompt);
+          await handleSend(prompt);
         };
 
       loadPrompt();
