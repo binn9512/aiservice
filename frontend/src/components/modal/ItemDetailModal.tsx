@@ -17,6 +17,8 @@ import {
   NavigationProp,
 } from '@react-navigation/native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import SimilarItemCard from './SimilarItemCard';
 import QuestionChip from './QuestionChip';
 
@@ -255,29 +257,29 @@ const ItemDetailModal = ({
 
                 <QuestionChip
                   text="이 아이템으로 다른 코디 추천해줘"
-                  onPress={() => {
+                  onPress={async () => {
+                    await AsyncStorage.setItem(
+                      'PENDING_PROMPT',
+                      `${item.name} (${item.tags?.join(', ')})으로 다른 코디 추천해줘`,
+                    );
+
                     onClose();
 
-                    navigation.navigate(
-                      '코디추천',
-                      {
-                        prompt: `${item.name} (${item.tags?.join(', ')})으로 다른 코디 추천해줘`
-                      },
-                    );
+                    navigation.goBack();
                   }}
                 />
 
                 <QuestionChip
                   text="이 아이템 빼고 다시 코디해줘"
-                  onPress={() => {
+                  onPress={async () => {
+                    await AsyncStorage.setItem(
+                      'PENDING_PROMPT',
+                      `${item.name} (${item.tags?.join(', ')}) 빼고 다시 코디해줘`,
+                    );
+
                     onClose();
 
-                    navigation.navigate(
-                      '코디추천',
-                      {
-                        prompt: `${item.name} (${item.tags?.join(', ')}) 빼고 다시 코디해줘`,
-                      },
-                    );
+                    navigation.goBack();
                   }}
                 />
               </View>

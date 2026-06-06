@@ -56,15 +56,6 @@ const OutfitCard = ({
         )
       }>
 
-      {/* Model Image */}
-      <View style={styles.modelContainer}>
-        <Image
-          source={outfit.modelImage}
-          style={styles.modelImage}
-          resizeMode="contain"
-        />
-      </View>
-
       {/* Item List */}
       <View style={styles.itemSection}>
         {outfit.items.map(item => {
@@ -125,6 +116,22 @@ const OutfitCard = ({
           );
         })}
       </View>
+
+      <TouchableOpacity
+        style={styles.avatarButton}
+        onPress={() =>
+          navigation.navigate(
+            'RecommendOutfitDetail',
+            {
+              outfits,
+              initialIndex: index,
+            },
+          )
+        }>
+        <Text style={styles.avatarButtonText}>
+          내 아바타에 입혀보기
+        </Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 };

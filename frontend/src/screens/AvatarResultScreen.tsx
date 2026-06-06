@@ -33,7 +33,7 @@ export default function AvatarResultScreen() {
             async () => {
             const savedImage =
                 await AsyncStorage.getItem(
-                'USER_FACE_IMAGE',
+                'USER_AVATAR_IMAGE',
                 );
 
             if (savedImage) {
@@ -81,11 +81,19 @@ export default function AvatarResultScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() =>
-          navigation.navigate(
-            'MainTabs',
-          )
-        }>
+        onPress={async () => {
+
+            if (faceImage) {
+                await AsyncStorage.setItem(
+                'USER_AVATAR_IMAGE',
+                faceImage,
+                );
+            }
+
+            navigation.navigate(
+                'MainTabs',
+            );
+            }}>
 
         <Text style={styles.buttonText}>
           코디 추천 받으러 가기

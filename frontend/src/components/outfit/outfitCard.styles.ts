@@ -12,15 +12,11 @@ const CARD_WIDTH = width * 0.9;
 export default StyleSheet.create({
   card: {
     width: CARD_WIDTH,
-
-    aspectRatio: 1.1,
-
-    flexDirection: 'row',
-
+    
     backgroundColor: '#FFF3F7',
 
     borderRadius: 20,
-
+    
     padding: 16,
 
     marginHorizontal: 4,
@@ -47,17 +43,11 @@ export default StyleSheet.create({
   },
 
   itemSection: {
-    flex: 1,
-
-    marginLeft:15,
-
-    height: '100%',
-
-    justifyContent: 'space-between',
+    width: '100%',
   },
 
   itemButton: {
-    flex: 1,
+    height: 65,
 
     backgroundColor: '#ffffff',
 
@@ -114,4 +104,26 @@ export default StyleSheet.create({
 
     color: '#FF5C8A',
   },
+
+  avatarButton: {
+  marginTop: 10,
+
+  height: 48,
+
+  borderRadius: 14,
+
+  backgroundColor: '#FF5C8A',
+
+  justifyContent: 'center',
+
+  alignItems: 'center',
+},
+
+avatarButtonText: {
+  color: '#FFFFFF',
+
+  fontSize: 15,
+
+  fontWeight: '700',
+},
 });

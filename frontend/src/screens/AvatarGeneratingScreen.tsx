@@ -2,9 +2,11 @@ import React, {
   useEffect,
 } from 'react';
 
+import AsyncStorage
+from '@react-native-async-storage/async-storage';
+
 import {
   SafeAreaView,
-  View,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -19,16 +21,47 @@ export default function AvatarGeneratingScreen() {
     useNavigation<any>();
 
   useEffect(() => {
-    const timer =
-      setTimeout(() => {
+  const generateAvatar =
+    async () => {
+      try {
+        const faceImage =
+          await AsyncStorage.getItem(
+            'USER_FACE_IMAGE',
+          );
+
+        console.log(
+          'USER_FACE_IMAGE =',
+          faceImage,
+        );
+
+        if (faceImage) {
+          await AsyncStorage.setItem(
+            'USER_AVATAR_IMAGE',
+            faceImage,
+          );
+
+          console.log(
+            'USER_AVATAR_IMAGE 저장 완료',
+          );
+        }
+
         navigation.replace(
           'AvatarResult',
         );
-      }, 3000);
+      } catch (error) {
+        console.log(
+          '❌ avatar error',
+          error,
+        );
 
-    return () =>
-      clearTimeout(timer);
-  }, []);
+        navigation.replace(
+          'AvatarResult',
+        );
+      }
+    };
+
+  generateAvatar();
+}, []);
 
   return (
     <SafeAreaView

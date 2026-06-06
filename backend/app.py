@@ -7,6 +7,19 @@ import json
 from weather import get_today_weather_and_outfit
 from flask import send_from_directory
 from chatbot_part import chat_with_closet  # 우리가 구체화한 챗봇 함수
+import requests
+from PIL import Image
+from io import BytesIO
+from dotenv import load_dotenv
+from PIL import Image
+import uuid
+from outfit_generator import generate_outfit_image
+
+load_dotenv()
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+print("HF TOKEN =", HF_TOKEN)
 
 app = Flask(__name__)
 CORS(app)  # 다른 도메인(앱 등)에서 접근할 수 있게 허용
@@ -82,6 +95,11 @@ def analyze_image():
         })
 
     except Exception as e:
+        import traceback
+
+        print("❌ AVATAR ERROR:")
+        traceback.print_exc()
+
         return jsonify({
             "success": False,
             "error": str(e)
@@ -119,6 +137,27 @@ def get_image_path_by_id(clothing_id):
     except Exception as e:
         print(f"❌ DB 이미지 경로 조회 오류: {e}")
         return None
+    
+# 옷 입히기 데모 이미지를 불러오는 함수
+def get_demo_outfit_image(ai_json):
+
+    style_text = (
+        ai_json.get("message", "")
+    )
+
+    if "출근" in style_text:
+        return "static/demo_outfits/office.png"
+
+    if "데이트" in style_text:
+        return "static/demo_outfits/date.png"
+
+    if "캐주얼" in style_text:
+        return "static/demo_outfits/casual.png"
+
+    if "페미닌" in style_text:
+        return "static/demo_outfits/feminine.png"
+
+    return "static/demo_outfits/minimal.png"
     
 
 # 옷 ID를 기반으로 실제 옷 정보를 조회하는 내부 도우미 함수
@@ -160,6 +199,164 @@ def get_item_info_by_id(clothing_id):
         print(f"❌ 옷 정보 조회 오류: {e}")
         return None
 
+def generate_outfit_image(
+    dress=None,
+    top=None,
+    bottom=None,
+    outer=None,
+    shoes=None,
+    bag=None,
+):
+    print("🔥 합성 함수 진입")
+    print("========== 합성 시작 ==========")
+    print("dress =", dress)
+    print("top =", top)
+    print("bottom =", bottom)
+    print("outer =", outer)
+    print("shoes =", shoes)
+    print("bag =", bag)
+    print("==============================")
+
+    try:
+        print(
+            "🔥 base exists =",
+            os.path.exists(
+                "static/avatar/base_avatar.png"
+            )
+        )
+        base = Image.open(
+            "static/avatar/base_avatar.png"
+        ).convert("RGBA")
+
+        print("아바타 크기 =", base.size)
+
+        def paste_item(
+            image_path,
+            x,
+            y,
+            w,
+            h,
+        ):
+            
+            print("입히는 옷 =", image_path)
+            print(
+                "파일 존재 =",
+                os.path.exists(image_path)
+            )
+
+            if not image_path:
+                return
+
+            item = Image.open(
+                image_path
+            ).convert("RGBA")
+
+            bbox = item.getbbox()
+
+            if bbox:
+                item = item.crop(bbox)
+
+            item = item.resize(
+                (w, h)
+            )
+
+            base.paste(
+                item,
+                (x, y),
+                item,
+            )
+
+            print("dress =", dress)
+            print("top =", top)
+            print("bottom =", bottom)
+            print("outer =", outer)
+            print("shoes =", shoes)
+            print("bag =", bag)
+
+        if dress:
+            paste_item(
+                dress,
+                450,
+                300,
+                850,
+                1300,
+            )
+
+        if outer:
+            paste_item(
+                outer,
+                420,
+                250,
+                900,
+                1100,
+            )
+
+        if top:
+            paste_item(
+                top,
+                520,
+                350,
+                700,
+                700,
+            )
+
+        if bottom:
+            paste_item(
+                bottom,
+                500,
+                950,
+                700,
+                800,
+            )
+
+        if shoes:
+            paste_item(
+                shoes,
+                550,
+                2000,
+                450,
+                200,
+            )
+
+        if bag:
+            paste_item(
+                bag,
+                1050,
+                600,
+                280,
+                350,
+            )
+
+        filename = (
+            f"final_{uuid.uuid4()}.png"
+        )
+
+        save_path = os.path.join(
+            "output",
+            filename,
+        )
+
+        base.save(save_path)
+
+        print(
+            "파일 저장 확인 =",
+            os.path.exists(save_path)
+        )
+
+        print(
+            "✅ 저장 완료:",
+            save_path
+        )
+
+        return f"output/{filename}"
+
+    except Exception as e:
+        print(
+            "합성 오류:",
+            e,
+        )
+        return None
+    
 # 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
 def chat_api():
@@ -194,11 +391,49 @@ def chat_api():
             "bag": get_item_info_by_id(bag_id),
             "accessory": get_item_info_by_id(accessory_id)
         }, indent=2, ensure_ascii=False))
+
+        outfit_image = get_demo_outfit_image(
+            ai_json
+        )
+
+
+        '''outfit_image = generate_outfit_image(
+            dress=get_item_info_by_id(dress_id)["image"]
+            if get_item_info_by_id(dress_id)
+            else None,
+
+            top=get_item_info_by_id(top_id)["image"]
+            if get_item_info_by_id(top_id)
+            else None,
+
+            bottom=get_item_info_by_id(bottom_id)["image"]
+            if get_item_info_by_id(bottom_id)
+            else None,
+
+            outer=get_item_info_by_id(outer_id)["image"]
+            if get_item_info_by_id(outer_id)
+            else None,
+
+            shoes=get_item_info_by_id(shoes_id)["image"]
+            if get_item_info_by_id(shoes_id)
+            else None,
+
+            bag=get_item_info_by_id(bag_id)["image"]
+            if get_item_info_by_id(bag_id)
+            else None,
+        )
+
+        print(
+            "🔥 outfit_image =",
+            outfit_image
+        )'''
         
         # ID를 바탕으로 실제 웹에서 접근 가능한 이미지 주소로 치환
         return jsonify({
             "success": True,
             "message": ai_json.get('message'),
+
+            "outfit_image": outfit_image,
 
             "images": {
                 "top": get_image_path_by_id(top_id),
@@ -468,6 +703,102 @@ def delete_chat_room():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# =========================================================================
+# 👤 AI 아바타 생성 API
+# =========================================================================
+
+@app.route('/generate-avatar', methods=['POST'])
+def generate_avatar():
+
+    if 'photo' not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "사진 없음"
+        }), 400
+
+    photo = request.files['photo']
+
+    try:
+        image_bytes = photo.read()
+
+        API_URL = (
+            "https://api-inference.huggingface.co/models/"
+            "stabilityai/stable-diffusion-xl-base-1.0"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {HF_TOKEN}"
+        }
+
+        prompt = """
+        full body korean woman,
+        fashion model,
+        standing pose,
+        clean white background,
+        realistic,
+        soft lighting,
+        fashion avatar
+        """
+
+        print("🔥 avatar request start")
+
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={
+                "inputs": prompt
+            },
+            timeout=120
+        )
+
+        print("STATUS =", response.status_code)
+        print("TEXT =", response.text[:500])
+
+        if response.status_code != 200:
+            return jsonify({
+                "success": False,
+                "error": response.text
+            }), 500
+
+        os.makedirs(
+            "output",
+            exist_ok=True
+        )
+
+        avatar_filename = (
+            f"avatar_{photo.filename}.png"
+        )
+
+        avatar_path = os.path.join(
+            "output",
+            avatar_filename
+        )
+
+        image = Image.open(
+            BytesIO(response.content)
+        )
+
+        image.save(
+            avatar_path
+        )
+
+        return jsonify({
+            "success": True,
+            "avatar_url":
+            f"http://192.168.219.123:5001/output/{avatar_filename}"
+        })
+
+    except Exception as e:
+        import traceback
+
+        print("\n❌ AVATAR ERROR ❌")
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

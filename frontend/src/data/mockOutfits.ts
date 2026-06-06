@@ -1,5 +1,5 @@
 const model1 = require(
-  '../assets/images/model1.jpeg',
+  '../assets/avatar/base_avatar.png',
 );
 
 export type SimilarItem = {

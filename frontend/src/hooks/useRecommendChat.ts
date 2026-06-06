@@ -22,7 +22,7 @@ import {
 } from '../data/mockMessages';
 
 const model1 = require(
-  '../assets/images/model1.jpeg',
+  '../assets/avatar/base_avatar.png',
 );
 
 const CHAT_STORAGE_KEY =
@@ -258,6 +258,16 @@ const useRecommendChat = () => {
 
       setRecommendedItems(data.items);
 
+        console.log(
+          '🔥 OUTFIT IMAGE URL =',
+          data.outfit_image,
+        );
+
+        console.log(
+          '🔥 MODEL IMAGE URL =',
+          `http://127.0.0.1:5001/${data.outfit_image}`,
+        );
+
       const items = [
         data.items?.outer,
         data.items?.top,
@@ -297,7 +307,12 @@ const useRecommendChat = () => {
         outfits: [
           {
             id: String(Date.now()),
-            modelImage: model1,
+
+            modelImage:
+              data.outfit_image
+                ? `http://127.0.0.1:5001/${data.outfit_image}`
+                : model1,
+
             items,
           },
         ],

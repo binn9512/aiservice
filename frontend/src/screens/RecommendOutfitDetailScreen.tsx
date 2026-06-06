@@ -1,4 +1,7 @@
-import React, {useState} from 'react';
+import React, {
+  useState,
+  useEffect,
+} from 'react';
 
 import {
   View,
@@ -82,6 +85,48 @@ export default function RecommendOutfitDetailScreen() {
 
   const current = outfits[index];
 
+  console.log(
+    'MODEL IMAGE =',
+    current.modelImage,
+  );
+
+  console.log(
+    'CURRENT OUTFIT =',
+    JSON.stringify(current, null, 2),
+  );
+
+    console.log(
+    JSON.stringify(
+      current.items,
+      null,
+      2,
+    ),
+  );
+
+  const [faceImage, setFaceImage] =
+  useState<string | null>(null);
+
+  useEffect(() => {
+    const loadFaceImage =
+      async () => {
+        const savedImage =
+          await AsyncStorage.getItem(
+            'USER_AVATAR_IMAGE',
+          );
+
+        console.log(
+          'USER_AVATAR_IMAGE =',
+          savedImage,
+        );
+
+        if (savedImage) {
+          setFaceImage(savedImage);
+        }
+      };
+
+    loadFaceImage();
+  }, []);
+
   return (
     <>
       <View style={styles.container}>
@@ -111,10 +156,43 @@ export default function RecommendOutfitDetailScreen() {
         {/* Content */}
         <View style={styles.content}>
 
-          <Image
-            source={current.modelImage}
-            style={styles.modelImage}
-          />
+            {faceImage ? (
+              <View style={styles.avatarWrapper}>
+                <Image
+                  source={
+                    typeof current.modelImage ===
+                    'string'
+                      ? {
+                          uri:
+                            current.modelImage,
+                        }
+                      : current.modelImage
+                  }
+                  style={styles.modelImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View
+                style={styles.emptyAvatar}>
+                <Text
+                  style={styles.emptyAvatarText}>
+                  AI 아바타
+                </Text>
+
+                <Text
+                  style={styles.emptyAvatarSub}>
+                  프로필 화면에서
+                </Text>
+
+                <Text
+                  style={styles.emptyAvatarSub}>
+                  아바타 생성 후 표시됩니다
+                </Text>
+              </View>
+            )}
+            
+          
 
           <View style={styles.itemBox}>
             <Text style={styles.itemTitle}>
@@ -310,6 +388,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
 
     color: '#111',
+
+    marginTop: 2,
   },
 
   outfitTitle: {
@@ -335,13 +415,23 @@ const styles = StyleSheet.create({
   },
 
   modelImage: {
-    width: 160,
+    width: 240,
 
-    height: 340,
+    height: 450,
 
     borderRadius: 24,
 
     resizeMode: 'cover',
+
+    marginVertical: -55,
+
+    marginLeft: -45,
+  },
+
+  avatarWrapper: {
+    width: 160,
+    height: 340,
+    position: 'relative',
   },
 
   itemBox: {
@@ -518,4 +608,108 @@ const styles = StyleSheet.create({
 
     fontWeight: '700',
   },
+
+  emptyAvatar: {
+  width: 160,
+
+  height: 340,
+
+  borderRadius: 24,
+
+  backgroundColor: '#F5F5F5',
+
+  justifyContent: 'center',
+
+  alignItems: 'center',
+},
+
+emptyAvatarText: {
+  fontSize: 20,
+
+  fontWeight: '700',
+
+  color: '#666',
+},
+
+emptyAvatarSub: {
+  fontSize: 12,
+
+  color: '#999',
+
+  marginTop: 6,
+
+  marginVertical: -3,
+},
+
+clothesLayer: {
+  position: 'absolute',
+
+  top: 60,
+
+  left: 20,
+
+  width: 120,
+
+  height: 220,
+},
+
+dressLayer: {
+  position: 'absolute',
+
+  top: 55,
+
+  left: 15,
+
+  width: 130,
+
+  height: 220,
+},
+
+shoesLayer: {
+  position: 'absolute',
+
+  top: 255,
+
+  left: 35,
+
+  width: 90,
+
+  height: 60,
+},
+
+bagLayer: {
+  position: 'absolute',
+
+  top: 120,
+
+  left: 85,
+
+  width: 55,
+
+  height: 80,
+},
+
+outerLayer: {
+  position: 'absolute',
+  top: 55,
+  left: 10,
+  width: 140,
+  height: 120,
+},
+
+topLayer: {
+  position: 'absolute',
+  top: 90,
+  left: 15,
+  width: 130,
+  height: 120,
+},
+
+bottomLayer: {
+  position: 'absolute',
+  top: 165,
+  left: 25,
+  width: 110,
+  height: 140,
+},
 });
