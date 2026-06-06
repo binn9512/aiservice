@@ -17,8 +17,6 @@ import {
   NavigationProp,
 } from '@react-navigation/native';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import SimilarItemCard from './SimilarItemCard';
 import QuestionChip from './QuestionChip';
 
@@ -32,12 +30,17 @@ type Props = {
   visible: boolean;
   item: OutfitItem | null;
   onClose: () => void;
+
+  onRecommendQuestion?: (
+    prompt: string,
+  ) => void;
 };
 
 const ItemDetailModal = ({
   visible,
   item,
   onClose,
+  onRecommendQuestion,
 }: Props) => {
   const navigation =
     useNavigation<
@@ -257,29 +260,23 @@ const ItemDetailModal = ({
 
                 <QuestionChip
                   text="이 아이템으로 다른 코디 추천해줘"
-                  onPress={async () => {
-                    await AsyncStorage.setItem(
-                      'PENDING_PROMPT',
+                  onPress={() => {
+                    onRecommendQuestion?.(
                       `${item.name} (${item.tags?.join(', ')})으로 다른 코디 추천해줘`,
                     );
 
                     onClose();
-
-                    navigation.goBack();
                   }}
                 />
 
                 <QuestionChip
                   text="이 아이템 빼고 다시 코디해줘"
-                  onPress={async () => {
-                    await AsyncStorage.setItem(
-                      'PENDING_PROMPT',
+                  onPress={() => {
+                    onRecommendQuestion?.(
                       `${item.name} (${item.tags?.join(', ')}) 빼고 다시 코디해줘`,
                     );
 
                     onClose();
-
-                    navigation.goBack();
                   }}
                 />
               </View>

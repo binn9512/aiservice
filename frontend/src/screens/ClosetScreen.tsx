@@ -324,6 +324,10 @@ const ClosetScreen = () => {
             searchText.toLowerCase();
 
           return (
+            item.name
+              ?.toLowerCase()
+              .includes(keyword) ||
+
             item.category
               ?.toLowerCase()
               .includes(keyword) ||

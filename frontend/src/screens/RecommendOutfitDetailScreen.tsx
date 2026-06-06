@@ -348,6 +348,11 @@ export default function RecommendOutfitDetailScreen() {
           setModalVisible(false);
           setSelectedItem(null);
         }}
+        onRecommendQuestion={(prompt) => {
+          setInputText(prompt);
+          setModalVisible(false);
+          setSelectedItem(null);
+        }}
       />
     </>
   );

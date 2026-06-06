@@ -23,8 +23,8 @@ const sections = [
       '페미닌',
       '미니멀',
       '캐주얼',
-      '러블리',
-      '시크',
+      '비지니스',
+      '빈티지',
     ],
   },
 
@@ -32,10 +32,10 @@ const sections = [
     key: 'personalColor',
     title: '퍼스널 컬러',
     options: [
-      '봄 웜',
-      '여름 쿨',
-      '가을 웜',
-      '겨울 쿨',
+      '봄 웜톤',
+      '여름 쿨톤',
+      '가을 웜톤',
+      '겨울 쿨톤',
     ],
   },
 
@@ -57,7 +57,7 @@ const sections = [
       '웨이브',
       '스트레이트',
       '내추럴',
-      '하체 발달형',
+      
     ],
   },
 
@@ -65,9 +65,10 @@ const sections = [
     key: 'highlight',
     title: '강조하고 싶은 부위',
     options: [
+      '목선',
+      '팔',
       '허리',
       '다리',
-      '목선',
       '비율',
     ],
   },
@@ -77,8 +78,9 @@ const sections = [
     title: '가리고 싶은 부위',
     options: [
       '복부',
-      '팔뚝',
+      '팔',
       '허벅지',
+      '종아리',
     ],
   },
 ];
@@ -115,17 +117,16 @@ const SurveyScreen = () => {
   }
 
   function submitSurvey() {
-  navigation.goBack();
-
-  setTimeout(() => {
     navigation.navigate(
-      '프로필',
+      'MainTabs',
       {
-        updatedProfile: form,
+        screen: '프로필',
+        params: {
+          updatedProfile: form,
+        },
       },
     );
-  }, 100);
-}
+  }
 
   return (
     <SafeAreaView
@@ -240,8 +241,8 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    marginBottom: 28,
-    paddingHorizontal: 20,
+    marginBottom: 18,
+    paddingHorizontal: 25,
   },
 
   sectionTitle: {
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111111',
 
-    marginBottom: 14,
+    marginBottom: 12,
   },
 
   optionGrid: {
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
 
     marginHorizontal: 20,
-    marginTop: 10,
+    marginTop: 50,
     marginBottom: 120,
   },
 

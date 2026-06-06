@@ -104,12 +104,21 @@ const ProfileScreen = () => {
 
   const route = useRoute<any>();
 
-  const [profileData] =
+  const [profileData, setProfileData] =
     useState(
-      route.params
-        ?.updatedProfile ||
-        defaultProfile,
+      route.params?.updatedProfile ||
+      defaultProfile,
     );
+
+    useEffect(() => {
+      if (
+        route.params?.updatedProfile
+      ) {
+        setProfileData(
+          route.params.updatedProfile,
+        );
+      }
+    }, [route.params]);
 
   const [weather, setWeather] =
     useState({
