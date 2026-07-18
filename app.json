@@ -7,9 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myvffexpo",
     "userInterfaceStyle": "automatic",
-    "router": {
-      "origin": "src/app"
-    },
     "ios": {
       "icon": "./assets/expo.icon"
     },
