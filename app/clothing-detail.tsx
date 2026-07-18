@@ -15,7 +15,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-const API_BASE_URL = 'http://127.0.0.1:5001';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 export default function ClothingDetailScreen() {
   // 2️⃣ router 및 파라미터 파싱 처리

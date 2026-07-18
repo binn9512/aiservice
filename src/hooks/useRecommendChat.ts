@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { ChatRoom, ChatMessage, OutfitMessage } from '../types/chat';
 
 // 서버 주소 변수화
-const API_BASE_URL = 'http://192.168.219.125:5001';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 const model1 = require('../assets/avatar/base_avatar.png');
 const CHAT_STORAGE_KEY = 'MYVFF_CHAT_DATA';
 

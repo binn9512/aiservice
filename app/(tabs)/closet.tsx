@@ -21,7 +21,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 // 2️⃣ 엑스포 내장 아이콘 사용
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-const API_BASE_URL = 'http://192.168.219.125:5001';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 const categories = [
   '전체',

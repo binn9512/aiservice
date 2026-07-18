@@ -17,6 +17,7 @@ android/app/local.properties
 android/flutter_plugin_android_lifecycle/
 build/
 .dart_tool/
+.expo/
 
 # Database
 *.db
@@ -32,5 +33,5 @@ backend/output/
 expo-env.d.ts
 # @end expo-cli
 
-
-.expo/
+# Local environment
+.env.local
