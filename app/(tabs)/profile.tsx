@@ -9,9 +9,41 @@ import {
   Pressable,
   Image,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import useGoogleCalendar from '../../src/hooks/useGoogleCalendar';
+
+type ProfileData = {
+  style: string;
+  personalColor: string;
+  colorMood: string;
+  bodyType: string;
+  highlight: string;
+  cover: string;
+};
+
+const defaultProfile: ProfileData = {
+  style: '페미닌 · 소프트',
+  personalColor: '봄 웜 라이트',
+  colorMood: '파스텔톤',
+  bodyType: '웨이브 · 상체 슬림',
+  highlight: '허리',
+  cover: '복부',
+};
+
+function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoLeft}>
+        <Text style={styles.infoIcon}>{icon}</Text>
+        <Text style={styles.infoLabel}>{label}</Text>
+      </View>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
 
 function WeatherCard({ weather }: { weather: { title: string; message: string } }) {
   return (
@@ -27,9 +59,13 @@ function WeatherCard({ weather }: { weather: { title: string; message: string } 
 
 const ProfileScreen = () => {
   const router = useRouter();
-  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
+  const params = useLocalSearchParams();
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.219.125:5001';
+
+  const [profileData, setProfileData] = useState(defaultProfile);
   const [weather, setWeather] = useState({ title: '오늘의 날씨', message: '날씨 정보를 불러오는 중입니다.' });
   const [faceImage, setFaceImage] = useState<string | null>(null);
+  const calendar = useGoogleCalendar();
 
   useEffect(() => {
     const loadWeather = async () => {
@@ -53,7 +89,7 @@ const ProfileScreen = () => {
   const handleFaceRegister = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1
+      quality: 1,
     });
     if (!result.canceled) {
       const uri = result.assets[0].uri;
@@ -87,6 +123,58 @@ const ProfileScreen = () => {
           </View>
         </View>
 
+        {/* 나의 정보 섹션 */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.infoTitle}>나의 정보</Text>
+          <Pressable onPress={() => router.push('/survey')}>
+            <Text style={styles.actionText}>설문 다시하기 〉</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.infoList}>
+          <InfoRow icon="🩷" label="스타일 선호도" value={profileData.style} />
+          <InfoRow icon="🎨" label="퍼스널 컬러" value={profileData.personalColor} />
+          <InfoRow icon="🌈" label="좋아하는 색상" value={profileData.colorMood} />
+          <InfoRow icon="🧍‍♀️" label="체형" value={profileData.bodyType} />
+          <InfoRow icon="✨" label="강조하고 싶은 부위" value={profileData.highlight} />
+          <InfoRow icon="🛡️" label="가리고 싶은 부위" value={profileData.cover} />
+        </View>
+
+        {/* Google 캘린더 연동 섹션 */}
+        <Text style={styles.weatherSectionTitle}>Google 캘린더 연동</Text>
+        <View style={styles.calendarCard}>
+          {calendar.status.connected ? (
+            <>
+              <Text style={styles.calendarConnectedText}>
+                ✅ {calendar.status.email} 계정과 연결되어 있어요
+              </Text>
+              <Pressable
+                style={styles.calendarDisconnectButton}
+                onPress={calendar.disconnect}
+                disabled={calendar.loading}>
+                <Text style={styles.calendarDisconnectText}>연결 해제</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.calendarDescText}>
+                캘린더를 연결하면 일정에 맞춰 코디를 추천받을 수 있어요. (읽기 전용)
+              </Text>
+              <Pressable
+                style={styles.calendarConnectButton}
+                onPress={calendar.connect}
+                disabled={calendar.loading || !calendar.canConnect}>
+                <Text style={styles.calendarConnectText}>
+                  {calendar.loading ? '연결 중...' : 'Google 캘린더 연결하기'}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {!!calendar.error && (
+            <Text style={styles.calendarErrorText}>{calendar.error}</Text>
+          )}
+        </View>
+
         {/* 오늘의 날씨 섹션 */}
         <Text style={styles.weatherSectionTitle}>오늘의 날씨</Text>
         <WeatherCard weather={weather} />
@@ -102,7 +190,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#111111' },
-  profileCard: { backgroundColor: '#FFF7FA', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EAEAEA', marginHorizontal: 20, marginBottom: 24 },
+  profileCard: { backgroundColor: '#FFF7FA', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EAEAEA', marginHorizontal: 20, marginBottom: 18 },
   profileRow: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 86, height: 86, borderRadius: 43, backgroundColor: '#fde6ea', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   avatarText: { color: '#444', fontWeight: '500' },
@@ -111,9 +199,26 @@ const styles = StyleSheet.create({
   avatarTitle: { fontSize: 18, fontWeight: '700', color: '#FF5C8A', marginBottom: 8 },
   avatarButton: { backgroundColor: '#FF5C8A', borderRadius: 14, height: 40, justifyContent: 'center', alignItems: 'center' },
   avatarButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  weatherCard: { marginHorizontal: 20, borderRadius: 18, backgroundColor: '#EEF8F0', padding: 18, flexDirection: 'row', alignItems: 'center' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 8 },
+  infoTitle: { fontSize: 18, fontWeight: '700', color: '#111111' },
+  actionText: { fontSize: 13, color: '#FF5C8A', fontWeight: '600' },
+  infoList: { marginHorizontal: 20, marginBottom: 18 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F3F3' },
+  infoLeft: { flexDirection: 'row', alignItems: 'center' },
+  infoIcon: { width: 30, fontSize: 15 },
+  infoLabel: { fontSize: 14, color: '#111111' },
+  infoValue: { fontSize: 14, fontWeight: '500', color: '#555555' },
+  weatherCard: { marginHorizontal: 20, borderRadius: 18, backgroundColor: '#EEF8F0', padding: 18, flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   weatherEmoji: { fontSize: 34, marginRight: 16 },
   weatherSectionTitle: { fontSize: 18, fontWeight: '700', color: '#111111', marginHorizontal: 20, marginTop: 4, marginBottom: 12 },
   weatherCardTitle: { fontSize: 16, fontWeight: '700', color: '#2EAD5B', marginBottom: 6 },
-  weatherDesc: { fontSize: 12, color: '#666666', lineHeight: 18 }
+  weatherDesc: { fontSize: 12, color: '#666666', lineHeight: 18 },
+  calendarCard: { marginHorizontal: 20, marginBottom: 18, borderRadius: 18, backgroundColor: '#FFF7FA', borderWidth: 1, borderColor: '#EAEAEA', padding: 16 },
+  calendarDescText: { fontSize: 13, color: '#555555', lineHeight: 18, marginBottom: 12 },
+  calendarConnectedText: { fontSize: 13, fontWeight: '600', color: '#111111', marginBottom: 12 },
+  calendarConnectButton: { backgroundColor: '#FF5C8A', borderRadius: 14, height: 44, justifyContent: 'center', alignItems: 'center' },
+  calendarConnectText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  calendarDisconnectButton: { backgroundColor: '#FFFFFF', borderRadius: 14, height: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FF5C8A' },
+  calendarDisconnectText: { color: '#FF5C8A', fontWeight: '700', fontSize: 14 },
+  calendarErrorText: { fontSize: 12, color: '#E23744', marginTop: 10 },
 });

@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
-import { ChatRoom, ChatMessage, OutfitMessage } from '../types/chat';
+
+import { ChatRoom, ChatMessage, ChatItem, OutfitMessage, ScheduleMessage } from '../types/chat';
 
 // 서버 주소 변수화
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
@@ -114,33 +115,6 @@ const useRecommendChat = () => {
       const data = await response.json();
 
       console.log("추천 API 응답:", data);
-      console.log("추천 아이템:", data.items);
-
-      setRecommendedItems(data.items);
-
-      // 🌟 무신사 관련 정보(is_shop, buy_url, brand, price)까지 매핑 + URL 분기 처리
-      const rawItems = [
-        data.items?.outer,
-        data.items?.top,
-        data.items?.bottom,
-        data.items?.dress,
-        data.items?.shoes,
-        data.items?.bag,
-        data.items?.accessory,
-      ].filter(Boolean);
-
-      const items = rawItems.map((item: any) => ({
-        id: String(item.id),
-        name: item.name || item.category,
-        image: resolveImageUrl(item.image), // 👈 온라인 URL/로컬 구분
-        type: item.is_shop ? 'shop' : 'closet',
-        tags: item.style ? item.style.split(',').map((tag: string) => tag.trim()) : [],
-        is_shop: item.is_shop || false,
-        buy_url: item.buy_url || '',
-        brand: item.brand || '',
-        price: item.price || 0,
-        similarItems: [],
-      }));
 
       const aiMessage: ChatMessage = {
         id: Date.now() + 1,
@@ -149,20 +123,61 @@ const useRecommendChat = () => {
         text: data.message || '코디 추천 결과가 도착했어요 ✨',
       };
 
-      // 추천받은 옷 아이템이 1개라도 존재하는 경우에만 카드 메시지 생성
-      const newMessages: ChatMessage[] = [aiMessage];
+      const newMessages: ChatItem[] = [aiMessage];
 
-      if (items.length > 0) {
-        const outfitMessage: OutfitMessage = {
-          id: Date.now() + 2,
-          type: 'outfit',
-          outfits: [{
-            id: String(Date.now()),
-            modelImage: data.outfit_image ? resolveImageUrl(data.outfit_image) : model1,
-            items,
-          }],
-        };
-        newMessages.push(outfitMessage);
+      if (data.intent) {
+        // 📅 일정 기반 코디 응답 - 일정 카드 + 후속 액션 칩
+        if (data.events?.length || data.suggestedActions?.length || data.clarifyingQuestion) {
+          const scheduleMessage: ScheduleMessage = {
+            id: Date.now() + 2,
+            type: 'schedule',
+            dateLabel: data.dateLabel ?? null,
+            events: data.events ?? [],
+            clarifyingQuestion: data.clarifyingQuestion ?? null,
+            suggestedActions: data.suggestedActions ?? [],
+            transitionPlan: data.transitionPlan ?? null,
+          };
+          newMessages.push(scheduleMessage);
+        }
+      } else {
+        setRecommendedItems(data.items);
+
+        // 🌟 무신사 관련 정보(is_shop, buy_url, brand, price) 매핑 + resolveImageUrl 처리
+        const rawItems = [
+          data.items?.outer,
+          data.items?.top,
+          data.items?.bottom,
+          data.items?.dress,
+          data.items?.shoes,
+          data.items?.bag,
+          data.items?.accessory,
+        ].filter(Boolean);
+
+        const items = rawItems.map((item: any) => ({
+          id: String(item.id),
+          name: item.name || item.category,
+          image: resolveImageUrl(item.image),
+          type: item.is_shop ? 'shop' : 'closet',
+          tags: item.style ? item.style.split(',').map((tag: string) => tag.trim()) : [],
+          is_shop: item.is_shop || false,
+          buy_url: item.buy_url || '',
+          brand: item.brand || '',
+          price: item.price || 0,
+          similarItems: [],
+        }));
+
+        if (items.length > 0) {
+          const outfitMessage: OutfitMessage = {
+            id: Date.now() + 3,
+            type: 'outfit',
+            outfits: [{
+              id: String(Date.now()),
+              modelImage: data.outfit_image ? resolveImageUrl(data.outfit_image) : model1,
+              items,
+            }],
+          };
+          newMessages.push(outfitMessage);
+        }
       }
 
       setChatRooms(prev =>

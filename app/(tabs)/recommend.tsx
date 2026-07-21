@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatBubble from '../../src/components/chat/ChatBubble';
 import ChatInput from '../../src/components/chat/ChatInput';
 import OutfitCarousel from '../../src/components/outfit/OutfitCarousel';
+import ScheduleCard from '../../src/components/chat/ScheduleCard';
 import ItemDetailModal from '../../src/components/modal/ItemDetailModal';
 import ChatListModal from '../../src/components/modal/ChatListModal';
 import RecommendHeader from '../../src/components/recommend/RecommendHeader';
@@ -84,7 +85,6 @@ const RecommendScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🌟 1. 키보드 오프셋 수정 (마이너스 값 제거!) */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -93,7 +93,7 @@ const RecommendScreen = () => {
         {/* Header */}
         <RecommendHeader onPressMenu={() => setMenuVisible(true)} />
 
-        {/* Chat Area - flex: 1을 주어 남은 높이 차지 */}
+        {/* Chat Area */}
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
@@ -111,6 +111,22 @@ const RecommendScreen = () => {
                 </View>
               );
             }
+
+            if (item.type === 'schedule') {
+              return (
+                <View key={item.id} style={{ marginBottom: 16, paddingHorizontal: 10 }}>
+                  <ScheduleCard
+                    dateLabel={item.dateLabel}
+                    events={item.events}
+                    clarifyingQuestion={item.clarifyingQuestion}
+                    suggestedActions={item.suggestedActions}
+                    transitionPlan={item.transitionPlan}
+                    onActionPress={handleSend}
+                  />
+                </View>
+              );
+            }
+
             return (
               <View key={item.id} style={{ marginBottom: 16 }}>
                 <OutfitCarousel
@@ -128,7 +144,7 @@ const RecommendScreen = () => {
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        {/* Bottom Section (하단 룩프롬프트 + 채팅 입력창) */}
+        {/* Bottom Section */}
         <RecommendBottomSection
           showOptions={showOptions}
           setShowOptions={setShowOptions}
@@ -160,7 +176,7 @@ const RecommendScreen = () => {
         {/* Chat List Modal */}
         <ChatListModal
           visible={menuVisible}
-          currentChatId={currentChat.id}
+          currentChatId={currentChat?.id || 0}
           chatRooms={chatRooms}
           onClose={() => setMenuVisible(false)}
           onNewChat={handleNewChat}

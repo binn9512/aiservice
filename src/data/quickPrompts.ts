@@ -26,6 +26,16 @@ const quickPrompts = [
     prompt:
       '미니멀룩 추천해줘',
   },
+<<<<<<< HEAD
+=======
+
+  {
+    id: '5',
+    title: '오늘 일정 코디',
+    prompt:
+      '오늘 일정에 맞춰 코디 추천해줘',
+  },
+>>>>>>> 3e88487 (feat: Google Calendar 연동 기반 일정 코디 추천 기능 추가)
 ];
 
 export default quickPrompts;

@@ -15,9 +15,29 @@ export type ChatMessage = {
   text: string;
 };
 
+export type ScheduleEvent = {
+  title: string;
+  start: string;
+  end?: string | null;
+  allDay?: boolean;
+  location?: string;
+  category?: string;
+};
+
+export type ScheduleMessage = {
+  id: number;
+  type: 'schedule';
+  dateLabel: string | null;
+  events: ScheduleEvent[];
+  clarifyingQuestion?: string | null;
+  suggestedActions?: string[];
+  transitionPlan?: string[] | null;
+};
+
 export type ChatItem =
   | ChatMessage
-  | OutfitMessage;
+  | OutfitMessage
+  | ScheduleMessage;
 
 export type ChatRoom = {
   id: number;
