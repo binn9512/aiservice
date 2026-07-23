@@ -22,7 +22,7 @@ const useRecommendChat = () => {
   const [loading, setLoading] = useState(false);
   const [recommendedItems, setRecommendedItems] = useState<any>(null);
   const [recommendedOutfits, setRecommendedOutfits] = useState<any[]>([]);
-  
+
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([
     {
       id: 1,
@@ -99,6 +99,10 @@ const useRecommendChat = () => {
       });
 
       const data = await response.json();
+
+      console.log("추천 API 응답:", data);
+      console.log("추천 아이템:", data.items);
+
       setRecommendedItems(data.items);
 
       const items = [data.items?.outer, data.items?.top, data.items?.bottom, data.items?.dress, data.items?.shoes, data.items?.bag]

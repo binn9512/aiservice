@@ -16,6 +16,7 @@ import uuid
 from outfit_generator import generate_outfit_image
 
 import os
+import re
 
 print("=== APP START ===")
 print("현재 작업 폴더:", os.getcwd())
@@ -178,6 +179,15 @@ def get_demo_outfit_image(ai_json):
     
 
 # 옷 ID를 기반으로 실제 옷 정보를 조회하는 내부 도우미 함수
+
+
+def extract_id(val):
+    if not val or val == "null" or val is None:
+        return None
+    # "ID:4 | 종류:집업..." 같은 문자열에서 첫 번째 발견되는 숫자만 추출
+    numbers = re.findall(r'\d+', str(val))
+    return int(numbers[0]) if numbers else None
+
 def get_item_info_by_id(clothing_id):
     if not clothing_id or clothing_id == "null" or clothing_id == "":
         return None
@@ -389,15 +399,17 @@ def chat_api():
     
     try:
         ai_json = json.loads(ai_string_response)
+
+        
         
         # AI가 추천한 부위별 옷 ID 추출
-        top_id = ai_json.get('top')
-        bottom_id = ai_json.get('bottom')
-        outer_id = ai_json.get('outer')
-        dress_id = ai_json.get('dress')
-        shoes_id = ai_json.get('shoes')
-        bag_id = ai_json.get('bag')
-        accessory_id = ai_json.get('accessory')
+        top_id = extract_id(ai_json.get('top'))
+        bottom_id = extract_id(ai_json.get('bottom'))
+        outer_id = extract_id(ai_json.get('outer'))
+        dress_id = extract_id(ai_json.get('dress'))
+        shoes_id =extract_id(ai_json.get('shoes'))
+        bag_id = extract_id(ai_json.get('bag'))
+        accessory_id =extract_id(ai_json.get('accessory'))
         
         print(json.dumps({
             "top": get_item_info_by_id(top_id),
@@ -499,6 +511,7 @@ def get_closet():
                 category,
                 style,
                 color,
+                name,
                 analyzed_at
             FROM clothes
         """)
@@ -516,7 +529,8 @@ def get_closet():
                 "category": row[2],
                 "style": row[3],
                 "color": row[4],
-                "analyzed_at": row[5]
+                "name":row[5],
+                "analyzed_at": row[6]
             })
      
 
