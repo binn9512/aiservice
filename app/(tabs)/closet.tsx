@@ -59,9 +59,24 @@ const ClosetScreen = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/closet`);
       const data = await response.json();
-      const sortedData = [...data].sort((a, b) => b.id - a.id);
 
-      setClothesData([{ id: 'add', type: 'add' }, ...sortedData]);
+      console.log("📥 백엔드에서 받은 실제 데이터:", data); // 터미널/로그로 형태 확인용
+
+      // 1. data가 배열인 경우 (백엔드가 [ {...}, {...} ] 로 준 경우)
+      if (Array.isArray(data)) {
+        const sortedData = [...data].sort((a, b) => b.id - a.id);
+        setClothesData([{ id: 'add', type: 'add' }, ...sortedData]);
+      }
+      // 2. data가 객체 안의 배열인 경우 (예: { success: true, result: [...] })
+      else if (data && Array.isArray(data.result)) {
+        const sortedData = [...data.result].sort((a, b) => b.id - a.id);
+        setClothesData([{ id: 'add', type: 'add' }, ...sortedData]);
+      }
+      // 3. 백엔드에서 에러 메시지나 예상치 못한 형태로 온 경우
+      else {
+        console.warn("⚠️ 백엔드 응답이 배열 형태가 아닙니다:", data);
+        setClothesData([{ id: 'add', type: 'add' }]); // 기본 추가 버튼만 유지
+      }
     } catch (error) {
       console.log('옷장 데이터 불러오기 실패:', error);
     }
@@ -76,7 +91,7 @@ const ClosetScreen = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 1,
     });
 
@@ -86,44 +101,44 @@ const ClosetScreen = () => {
   }
 
   async function uploadImage(asset: any) {
-  try {
-    setIsUploading(true);
-    
-    // 파일 정보 추출
-    const filename = asset.uri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename || '');
-    const type = match ? `image/${match[1]}` : `image/jpeg`;
+    try {
+      setIsUploading(true);
 
-    const formData = new FormData();
-    // Expo 환경에 최적화된 FormData 구성
-    formData.append('photo', {
-      uri: asset.uri,
-      name: filename,
-      type: type,
-    } as any);
-    formData.append('user_id', 'user1');
+      // 파일 정보 추출
+      const filename = asset.uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-    const response = await fetch(`${API_BASE_URL}/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      body: formData,
-    });
+      const formData = new FormData();
+      // Expo 환경에 최적화된 FormData 구성
+      formData.append('photo', {
+        uri: asset.uri,
+        name: filename,
+        type: type,
+      } as any);
+      formData.append('user_id', 'user1');
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || '업로드 실패');
-    
-    if (data.success) {
-      await loadClosetItems();
-      Alert.alert('완료', '옷이 추가되었습니다.');
+      const response = await fetch(`${API_BASE_URL}/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '업로드 실패');
+
+      if (data.success) {
+        await loadClosetItems();
+        Alert.alert('완료', '옷이 추가되었습니다.');
+      }
+    } catch (error: any) {
+      Alert.alert('오류', String(error.message));
+    } finally {
+      setIsUploading(false);
     }
-  } catch (error: any) {
-    Alert.alert('오류', String(error.message));
-  } finally {
-    setIsUploading(false);
   }
-}
 
   async function deleteClothes(itemId: number) {
     try {
@@ -141,15 +156,15 @@ const ClosetScreen = () => {
     selectedCategory === '전체'
       ? clothesData
       : clothesData.filter(item => {
-          if (item.type === 'add') return true;
-          if (selectedCategory === '상의') return ['반팔 티셔츠', '긴팔 티셔츠', '셔츠/블라우스', '니트/스웨터', '맨투맨/후드', '슬리브리스'].includes(item.category);
-          if (selectedCategory === '하의') return ['데님 팬츠', '슬랙스', '반바지', '트레이닝 팬츠', '스커트'].includes(item.category);
-          if (selectedCategory === '원피스') return ['원피스'].includes(item.category);
-          if (selectedCategory === '아우터') return ['코트', '패딩', '자켓', '가디건', '집업'].includes(item.category);
-          if (selectedCategory === '신발') return ['운동화/스니커즈', '구두/로퍼', '힐', '부츠', '샌들/슬리퍼'].includes(item.category);
-          if (selectedCategory === '가방') return ['백팩', '숄더백/토트백', '크로스백', '클러치'].includes(item.category);
-          return false;
-        });
+        if (item.type === 'add') return true;
+        if (selectedCategory === '상의') return ['반팔 티셔츠', '긴팔 티셔츠', '셔츠/블라우스', '니트/스웨터', '맨투맨/후드', '슬리브리스'].includes(item.category);
+        if (selectedCategory === '하의') return ['데님 팬츠', '슬랙스', '반바지', '트레이닝 팬츠', '스커트'].includes(item.category);
+        if (selectedCategory === '원피스') return ['원피스'].includes(item.category);
+        if (selectedCategory === '아우터') return ['코트', '패딩', '자켓', '가디건', '집업'].includes(item.category);
+        if (selectedCategory === '신발') return ['운동화/스니커즈', '구두/로퍼', '힐', '부츠', '샌들/슬리퍼'].includes(item.category);
+        if (selectedCategory === '가방') return ['백팩', '숄더백/토트백', '크로스백', '클러치'].includes(item.category);
+        return false;
+      });
 
   const searchedData = filteredData.filter(item => {
     if (item.type === 'add') return true;

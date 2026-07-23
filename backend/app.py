@@ -15,6 +15,18 @@ from PIL import Image
 import uuid
 from outfit_generator import generate_outfit_image
 
+import os
+
+print("=== APP START ===")
+print("현재 작업 폴더:", os.getcwd())
+print("DB 절대경로:", os.path.abspath("codi_v2.db"))
+
+conn = sqlite3.connect("codi_v2.db")
+cursor = conn.cursor()
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("현재 DB 테이블:", cursor.fetchall())
+conn.close()
+
 load_dotenv()
 
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -116,6 +128,11 @@ def get_image_path_by_id(clothing_id):
         return None
         
     try:
+        import os
+
+        print("현재 작업 폴더:", os.getcwd())
+        print("DB 절대경로:", os.path.abspath("codi_v2.db"))
+
         conn = sqlite3.connect('codi_v2.db') 
         cursor = conn.cursor()
         
@@ -471,6 +488,7 @@ def chat_api():
 # 전체 옷장 목록 조회 API
 @app.route('/api/closet', methods=['GET'])
 def get_closet():
+    print("★★★★★ get_closet 실행 ★★★★★")
     try:
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
@@ -481,24 +499,26 @@ def get_closet():
                 category,
                 style,
                 color,
-                name,
                 analyzed_at
             FROM clothes
         """)
         rows = cursor.fetchall()
         conn.close()
 
+
+        from flask import request
         result = []
         for row in rows:
+            image_path=row[1].replace("\\","/")
             result.append({
                 "id": row[0],
-                "image": f"http://127.0.0.1:5001/{row[1]}",
+                "image": request.host_url+image_path,
                 "category": row[2],
                 "style": row[3],
                 "color": row[4],
-                "name": row[5],
-                "analyzed_at": row[6]
+                "analyzed_at": row[5]
             })
+     
 
         return jsonify(result)
     except Exception as e:

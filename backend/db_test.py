@@ -89,12 +89,16 @@ def insert_clothing_data(user_id, category, style, color, processed_image, origi
 def check_data():
     conn = sqlite3.connect('codi_v2.db')
     cursor = conn.cursor()
-    
+
     print("\n--- [현재 DB 데이터 확인] ---")
+
+    cursor.execute("SELECT COUNT(*) FROM clothes")
+    print("총 데이터 개수:", cursor.fetchone()[0])
+
     cursor.execute("SELECT * FROM clothes")
     rows = cursor.fetchall()
-    for row in rows:
-        print(row)
+    print(rows)
+
     conn.close()
 
 if __name__ == "__main__":
