@@ -30,16 +30,44 @@ def remove_background(image_path: str, output_folder: str = "output"):
     # 배경 제거
     output_image = remove(input_image)
 
-    # 결과 저장 경로 설정 (확장자를 .png로 변경하여 투명도 유지)
+    # RGBA로 변환
+    if output_image.mode != "RGBA":
+        output_image = output_image.convert("RGBA")
+
+    # 투명 여백 제거
+    bbox = output_image.getbbox()
+    if bbox:
+        output_image = output_image.crop(bbox)
+
+    # crop 후 살짝 축소 (90%)
+        scale = 0.9
+
+        w, h = output_image.size
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+
+        resized = output_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # 원래 크기의 투명 캔버스 생성
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+
+        # 가운데 배치
+        x = (w - new_w) // 2
+        y = (h - new_h) // 2
+
+        canvas.paste(resized, (x, y), resized)
+        output_image = canvas
+
+    # 저장 파일명
     from uuid import uuid4
-    
+
     output_filename = f"{uuid4()}_no_bg.png"
     output_path = os.path.join(output_folder, output_filename)
 
-    # Pillow를 사용하여 저장
+    # 저장
     output_image.save(output_path)
     print(f"Saved: {output_path}")
-    
+
     return output_path
 
 def classify_clothing(image):
@@ -228,8 +256,7 @@ def send_to_backend2_api(image_path):
         "analyzed_at": datetime.now().isoformat()
     }
 
-    # 3. 백엔드 2의 API 주소 (친구가 알려준 주소로 수정 필요)
-    # 예: "http://127.0.0.1:8000/api/clothes"
+    # 3. 백엔드 2의 API 주소
     api_url = "http://localhost:5001/analyze"
     try:
         # 데이터를 JSON 형태로 전송
