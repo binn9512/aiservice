@@ -8,10 +8,9 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-export default function LookbookCard({ item }: any) {
-  if (item.type === 'add') {
+export default function LookbookCard({ item, onPress }: any) {  if (item.type === 'add') {
     return (
-      <TouchableOpacity activeOpacity={0.8} style={styles.card}>
+      <TouchableOpacity activeOpacity={0.8} style={styles.card} onPress={onPress}>
         <View style={styles.addPreview}>
           <View style={styles.addCircle}>
             <Ionicons name="add" size={34} color="#fff" />
