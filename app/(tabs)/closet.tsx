@@ -15,6 +15,8 @@ import {
   TextInput,
 } from 'react-native';
 
+import LookbookGrid from '../../src/components/lookbook/LookbookGrid';
+
 // 1️⃣ expo-router에서 라우팅과 FocusEffect 훅 가져오기
 import { useRouter, useFocusEffect } from 'expo-router';
 
@@ -38,6 +40,7 @@ const ClosetScreen = () => {
   const router = useRouter();
 
   const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [selectedTab, setSelectedTab] = useState('옷');
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [sortOrder, setSortOrder] = useState('latest');
@@ -260,61 +263,121 @@ const ClosetScreen = () => {
           </View>
         </View>
 
-        <>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryIcon}>
-              <Ionicons name="shirt-outline" size={34} color="#FF5C8A" />
-            </View>
-            <View style={styles.summaryContent}>
-              <Text style={styles.summaryTitle}>AI가 분석한 내 옷</Text>
-              <View style={styles.countRow}>
-                <Text style={styles.countText}>{clothesData.filter(item => item.type !== 'add').length}</Text>
-                <Text style={styles.countLabel}>개</Text>
+        <View style={styles.topTabContainer}>
+          <TouchableOpacity
+            style={styles.topTabButton}
+            onPress={() => setSelectedTab('옷')}>
+            <Text
+              style={[
+                styles.topTabText,
+                selectedTab === '옷' && styles.activeTopTabText,
+              ]}>
+              옷
+            </Text>
+
+            {selectedTab === '옷' && <View style={styles.activeLine} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.topTabButton}
+            onPress={() => setSelectedTab('룩북')}>
+            <Text
+              style={[
+                styles.topTabText,
+                selectedTab === '룩북' && styles.activeTopTabText,
+              ]}>
+              룩북
+            </Text>
+
+            {selectedTab === '룩북' && <View style={styles.activeLine} />}
+          </TouchableOpacity>
+        </View>
+
+        {selectedTab === '옷' ? (
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <Ionicons name="shirt-outline" size={34} color="#FF5C8A" />
               </View>
-              <Text style={styles.updateText}>최근 업데이트: {` ${latestUpdateText}`}</Text>
+
+              <View style={styles.summaryContent}>
+                <Text style={styles.summaryTitle}>AI가 분석한 내 옷</Text>
+
+                <View style={styles.countRow}>
+                  <Text style={styles.countText}>
+                    {clothesData.filter(item => item.type !== 'add').length}
+                  </Text>
+
+                  <Text style={styles.countLabel}>개</Text>
+                </View>
+
+                <Text style={styles.updateText}>
+                  최근 업데이트: {latestUpdateText}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContainer}>
-            {categories.map(category => {
-              const isSelected = selectedCategory === category;
-              return (
-                <TouchableOpacity
-                  key={category}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedCategory(category)}
-                  style={[styles.categoryChip, isSelected && styles.selectedChip]}>
-                  <Text style={[styles.categoryText, isSelected && styles.selectedCategoryText]}>{category}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryContainer}>
+              {categories.map(category => {
+                const isSelected = selectedCategory === category;
 
-          <View style={styles.sortRow}>
-            <Text style={styles.totalText}>전체 {clothesData.filter(item => item.type !== 'add').length}개</Text>
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert('정렬', '정렬 방식을 선택하세요', [
-                  { text: '최신순', onPress: () => setSortOrder('latest') },
-                  { text: '오래된순', onPress: () => setSortOrder('oldest') },
-                  { text: '취소', style: 'cancel' },
-                ])
-              }>
-              <Text style={styles.sortText}>{sortOrder === 'latest' ? '최신순' : '오래된순'} ▼</Text>
-            </TouchableOpacity>
-          </View>
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedCategory(category)}
+                    style={[
+                      styles.categoryChip,
+                      isSelected && styles.selectedChip,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        isSelected && styles.selectedCategoryText,
+                      ]}>
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
-          <View style={styles.gridContainer}>
-            <FlatList
-              data={sortedData}
-              renderItem={renderClothingItem}
-              keyExtractor={item => item.id.toString()}
-              numColumns={3}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.columnWrapper}
-            />
-          </View>
-        </>
+            <View style={styles.sortRow}>
+              <Text style={styles.totalText}>
+                전체 {clothesData.filter(item => item.type !== 'add').length}개
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert('정렬', '정렬 방식을 선택하세요', [
+                    { text: '최신순', onPress: () => setSortOrder('latest') },
+                    { text: '오래된순', onPress: () => setSortOrder('oldest') },
+                    { text: '취소', style: 'cancel' },
+                  ])
+                }>
+                <Text style={styles.sortText}>
+                  {sortOrder === 'latest' ? '최신순' : '오래된순'} ▼
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.gridContainer}>
+              <FlatList
+                data={sortedData}
+                renderItem={renderClothingItem}
+                keyExtractor={item => item.id.toString()}
+                numColumns={3}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.columnWrapper}
+              />
+            </View>
+          </>
+        ) : (
+          <LookbookGrid />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -354,4 +417,10 @@ const styles = StyleSheet.create({
   deleteButtonText: { color: '#FF5C8A', fontSize: 13, fontWeight: '700' },
   deleteBadge: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF5C8A', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   searchHeaderInput: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111111', marginRight: 10 },
+  topTabContainer: {flexDirection: 'row', justifyContent: 'center', marginBottom: 16,},
+  topTabButton: { alignItems: 'center', paddingHorizontal: 28 }, 
+  topTabText: { fontSize: 17, fontWeight: '500', color: '#999999' }, 
+  activeTopTabText: { color: '#111111', fontWeight: '700' }, 
+  activeLine: { marginTop: 8, width: '100%', height: 3, backgroundColor: '#FF5C8A', borderRadius: 2 },
+
 });
