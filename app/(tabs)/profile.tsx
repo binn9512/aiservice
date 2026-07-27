@@ -59,6 +59,7 @@ function WeatherCard({ weather }: { weather: { title: string; message: string } 
 const ProfileScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
   const [profileData, setProfileData] = useState(defaultProfile);
   const [weather, setWeather] = useState({ title: '오늘의 날씨', message: '날씨 정보를 불러오는 중입니다.' });
   const [faceImage, setFaceImage] = useState<string | null>(null);
@@ -66,7 +67,7 @@ const ProfileScreen = () => {
   useEffect(() => {
     const loadWeather = async () => {
       try {
-        const response = await fetch('http://192.168.219.125:5001/weather');
+        const response = await fetch(`${API_BASE_URL}/weather`);
         const data = await response.json();
         setWeather(data);
       } catch (error) {
