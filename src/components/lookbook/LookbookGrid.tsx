@@ -10,9 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+
 import LookbookCard from './LookbookCard';
 
-const dummyLookbooks = [
+import { useRouter } from 'expo-router';
+
+const initialLookbooks = [
   {
     id: 'add',
     type: 'add',
@@ -53,21 +56,26 @@ const dummyLookbooks = [
 ];
 
 export default function LookbookGrid() {
+  const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-  const [lookbookName, setLookbookName] = useState(''); 
+  const [lookbookName, setLookbookName] = useState('');
+  const [lookbooks, setLookbooks] = useState(initialLookbooks);
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={dummyLookbooks}
+        data={lookbooks}
         keyExtractor={item => item.id}
         numColumns={2}
+        scrollEnabled={false}
         renderItem={({ item }) => (
           <LookbookCard
             item={item}
             onPress={() => {
               if (item.type === 'add') {
                 setModalVisible(true);
+              } else {
+                router.push('/lookbook-detail');
               }
             }}
           />
@@ -119,6 +127,22 @@ export default function LookbookGrid() {
               <Pressable
                 style={styles.createButton}
                 onPress={() => {
+                  if (!lookbookName.trim()) return;
+
+                  const newLookbook = {
+                    id: Date.now().toString(),
+                    title: lookbookName,
+                    count: 0,
+                    images: [],
+                  };
+
+                  setLookbooks(prev => [
+                    prev[0],          // + 카드 유지
+                    newLookbook,      // 새 룩북
+                    ...prev.slice(1), // 기존 룩북
+                  ]);
+
+                  setLookbookName('');
                   setModalVisible(false);
                 }}
               >

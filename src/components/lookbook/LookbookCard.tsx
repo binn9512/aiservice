@@ -25,15 +25,35 @@ export default function LookbookCard({ item, onPress }: any) {  if (item.type ==
   }
 
   return (
-    <TouchableOpacity activeOpacity={0.9} style={styles.card}>
-      <View style={styles.previewGrid}>
-        {item.images.map((img: string, index: number) => (
-          <Image
-            key={index}
-            source={{ uri: img }}
-            style={styles.previewImage}
-          />
-        ))}
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={styles.card}
+      onPress={onPress}
+    >
+        <View style={styles.previewGrid}>
+        {item.images.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Ionicons
+              name="images-outline"
+              size={40}
+              color="#C7C7C7"
+            />
+          </View>
+        ) : (
+          item.images.map((img: string, index: number) => (
+            <Image
+              key={index}
+              source={{ uri: img }}
+              style={styles.previewImage}
+            />
+          ))
+        )}
       </View>
 
       <View style={styles.info}>
