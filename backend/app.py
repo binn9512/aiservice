@@ -383,6 +383,72 @@ def generate_outfit_image(
             e,
         )
         return None
+
+# 무신사 DB(musinsa_clothes)에서 상품 정보 조회하는 도우미 함수
+def get_musinsa_item_by_id(musinsa_id):
+    if not musinsa_id or musinsa_id == "null" or musinsa_id == "":
+        return None
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT musinsa_id,
+                   category,
+                   style,
+                   color,
+                   img_url,
+                   name,
+                   product_url,
+                   price
+            FROM musinsa_clothes
+            WHERE musinsa_id = ?
+        """, (musinsa_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return {
+            "id": f"SHOP_{row[0]}",
+            "category": row[1],
+            "style": row[2],
+            "color": row[3],
+            "img_url": row[4],       # 무신사 온라인 이미지 URL
+            "name": row[5],
+            "product_url": row[6],   # 무신사 구매 링크
+            "price": row[7],       # 가격
+            "is_shop": True        # 👈 쇼핑몰 상품임을 구분하는 플래그!
+        }
+
+    except Exception as e:
+        print(f"❌ 무신사 옷 정보 조회 오류: {e}")
+        return None
+
+
+# ID가 MY_인지 SHOP_인지 판별하여 맞춤 조회를 해주는 통합 함수
+def get_any_item_info(item_code):
+    if not item_code or item_code == "null" or item_code == "":
+        return None
+    
+    item_str = str(item_code)
+    
+    # "SHOP_12" 또는 "ID:SHOP_12" 형태로 넘어온 경우 ➔ 무신사 DB 조회
+    if "SHOP_" in item_str:
+        clean_id = extract_id(item_str)
+        return get_musinsa_item_by_id(clean_id)
+    
+    # "MY_4" 또는 "4" 또는 "ID:4" 형태 ➔ 내 옷장 DB 조회
+    else:
+        clean_id = extract_id(item_str)
+        info = get_item_info_by_id(clean_id)
+        if info:
+            info["is_shop"] = False  # 내 옷장 옷
+            info["product_url"] = None
+        return info
     
 # 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
