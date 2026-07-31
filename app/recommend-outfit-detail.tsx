@@ -5,14 +5,17 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
+  Modal,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-// 올바른 경로 수정: app/에서 src/로 바로 접근
 import ItemDetailModal from '../src/components/modal/ItemDetailModal';
 import { OutfitItem } from '../src/types/outfit';
+import { Ionicons } from '@expo/vector-icons';
 
 type Outfit = {
   id: string;
@@ -46,6 +49,10 @@ export default function RecommendOutfitDetailScreen() {
   const current = outfits[index];
   const [faceImage, setFaceImage] = useState<string | null>(null);
 
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [lookbookTitle, setLookbookTitle] = useState('');
+  const [lookbookMemo, setLookbookMemo] = useState('');
+
   useEffect(() => {
     const loadFaceImage = async () => {
       const savedImage = await AsyncStorage.getItem('USER_AVATAR_IMAGE');
@@ -55,6 +62,41 @@ export default function RecommendOutfitDetailScreen() {
     };
     loadFaceImage();
   }, []);
+
+  const saveLookbook = async () => {
+    try {
+      const today = new Date();
+
+      const lookbook = {
+        id: Date.now().toString(),
+        title: lookbookTitle || '새 룩북',
+        memo: lookbookMemo,
+        date: `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`,
+        outfitImage: current.modelImage,
+        items: current.items,
+      };
+
+      const saved = await AsyncStorage.getItem('LOOKBOOKS');
+
+      const lookbooks = saved ? JSON.parse(saved) : [];
+
+      lookbooks.unshift(lookbook);
+
+      await AsyncStorage.setItem(
+        'LOOKBOOKS',
+        JSON.stringify(lookbooks)
+      );
+
+      setSaveModalVisible(false);
+      setLookbookTitle('');
+      setLookbookMemo('');
+
+      alert('룩북에 저장되었습니다.');
+    } catch (e) {
+      console.log(e);
+      alert('저장에 실패했습니다.');
+    }
+  };
 
   if (!current) {
     return (
@@ -122,6 +164,29 @@ export default function RecommendOutfitDetailScreen() {
         </View>
 
         <View style={styles.questionSection}>
+          <View style={styles.actionContainer}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                setLookbookTitle('');
+                setLookbookMemo('');
+                setSaveModalVisible(true);
+              }}
+            >
+              <Ionicons name="heart-outline" size={20} color="#FF5C8A" />
+              <Text style={styles.actionText}>룩북 저장</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                // TODO: 다시 추천
+              }}
+            >
+              <Ionicons name="refresh-outline" size={20} color="#4A4A4A" />
+              <Text style={styles.actionText}>다시 추천</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.questionTitle}>추천 질문</Text>
           <TouchableOpacity style={styles.questionButton} onPress={() => setInputText('오늘 날씨에 맞게 수정해줘')}>
             <Text style={styles.questionText}>✨ 오늘 날씨에 맞게 수정해줘</Text>
@@ -155,6 +220,53 @@ export default function RecommendOutfitDetailScreen() {
         onClose={() => { setModalVisible(false); setSelectedItem(null); }}
         onRecommendQuestion={(prompt) => { setInputText(prompt); setModalVisible(false); setSelectedItem(null); }}
       />
+
+      <Modal
+        visible={saveModalVisible}
+        animationType="slide"
+        transparent
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.saveModal}>
+
+            <Text style={styles.modalTitle}>
+              룩북 저장
+            </Text>
+
+            <TextInput
+              placeholder="룩북 이름"
+              value={lookbookTitle}
+              onChangeText={setLookbookTitle}
+              style={styles.modalInput}
+            />
+
+            <TextInput
+              placeholder="메모 (선택)"
+              value={lookbookMemo}
+              onChangeText={setLookbookMemo}
+              multiline
+              style={styles.memoInput}
+            />
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => {
+                saveLookbook();
+              }}
+            >
+              <Text style={styles.saveButtonText}>
+                저장
+              </Text>
+            </TouchableOpacity>
+
+          </View>
+        </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }
@@ -176,6 +288,31 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 12, fontWeight: '600', color: '#111' },
   itemSub: { fontSize: 11, color: '#777', marginTop: 2 },
   questionSection: { marginTop: 25, gap: 10 },
+  actionContainer: {
+  flexDirection: 'row',
+  gap: 12,
+  marginTop: 20,
+  marginBottom: 24,
+},
+
+actionButton: {
+  flex: 1,
+  height: 52,
+  borderRadius: 14,
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#E5E5E5',
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+actionText: {
+  marginLeft: 6,
+  fontSize: 15,
+  fontWeight: '600',
+  color: '#333',
+},
   questionTitle: { fontSize: 22, fontWeight: '700', color: '#111', marginBottom: -4 },
   questionButton: { backgroundColor: '#FFF5F8', borderWidth: 1, borderColor: '#FFD6E3', borderRadius: 999, paddingVertical: 12, paddingHorizontal: 12 },
   questionText: { fontSize: 14, color: '#FF5C8A', fontWeight: '600' },
@@ -185,4 +322,56 @@ const styles = StyleSheet.create({
   sendText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   emptyAvatar: { width: 160, height: 340, borderRadius: 24, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
   emptyAvatarText: { fontSize: 20, fontWeight: '700', color: '#666' },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+
+saveModal: {
+  backgroundColor: '#fff',
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 24,
+},
+
+modalTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  marginBottom: 20,
+},
+
+modalInput: {
+  borderWidth: 1,
+  borderColor: '#E5E5E5',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  height: 50,
+  marginBottom: 16,
+},
+
+memoInput: {
+  borderWidth: 1,
+  borderColor: '#E5E5E5',
+  borderRadius: 12,
+  padding: 16,
+  height: 100,
+  textAlignVertical: 'top',
+},
+
+saveButton: {
+  marginTop: 24,
+  height: 52,
+  borderRadius: 14,
+  backgroundColor: '#FF5C8A',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+saveButtonText: {
+  color: '#fff',
+  fontWeight: '700',
+  fontSize: 16,
+},
 });

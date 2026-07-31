@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,56 +8,55 @@ import {
   FlatList,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-const dummyOutfits = [
-  {
-    id: '1',
-    image: 'https://picsum.photos/500/700?1',
-    date: '2026.07.27',
-  },
-  {
-    id: '2',
-    image: 'https://picsum.photos/500/700?2',
-    date: '2026.07.26',
-  },
-  {
-    id: '3',
-    image: 'https://picsum.photos/500/700?3',
-    date: '2026.07.22',
-  },
-  {
-    id: '4',
-    image: 'https://picsum.photos/500/700?4',
-    date: '2026.07.20',
-  },
-  {
-    id: '5',
-    image: 'https://picsum.photos/500/700?5',
-    date: '2026.07.18',
-  },
-  {
-    id: '6',
-    image: 'https://picsum.photos/500/700?6',
-    date: '2026.07.15',
-  },
-];
+
 
 export default function LookbookDetailPage() {
   const router = useRouter();
+  const [lookbooks, setLookbooks] = useState<any[]>([]);
+
+  const loadLookbooks = async () => {
+    try {
+        const saved = await AsyncStorage.getItem('LOOKBOOKS');
+
+        if (saved) {
+        setLookbooks(JSON.parse(saved));
+        } else {
+        setLookbooks([]);
+        }
+    } catch (e) {
+        console.log(e);
+    }
+    };
+
+    useEffect(() => {
+    loadLookbooks();
+    }, []);
 
   const renderItem = ({ item }: any) => (
     <TouchableOpacity
       activeOpacity={0.9}
       style={styles.card}
       onPress={() => {
-        // TODO : 코디 상세 페이지 이동
-      }}
+        router.push({
+            pathname: '/lookbook-outfit-detail',
+            params: {
+                outfitId: item.id,
+            },
+            });
+        }}
     >
       <Image
-        source={{ uri: item.image }}
-        style={styles.image}
+      source={
+        typeof item.outfitImage === 'string'
+            ? { uri: item.outfitImage }
+            : item.outfitImage
+        }
+      style={styles.image}
       />
 
       <Text style={styles.date}>
@@ -94,11 +93,11 @@ export default function LookbookDetailPage() {
       </View>
 
       <Text style={styles.count}>
-        16개의 코디
+        {lookbooks.length}개의 코디
       </Text>
 
       <FlatList
-        data={dummyOutfits}
+        data={lookbooks}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}
