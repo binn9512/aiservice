@@ -79,8 +79,8 @@ const OutfitCarousel = ({
         horizontal
         bounces={false}
         pagingEnabled
-        
-      
+
+
         showsHorizontalScrollIndicator={
           false
         }
@@ -98,7 +98,7 @@ const OutfitCarousel = ({
             outfit={item}
             outfits={
               recommendedOutfits &&
-              recommendedOutfits.length > 0
+                recommendedOutfits.length > 0
                 ? recommendedOutfits
                 : mockOutfits
             }
@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-  paddingTop: 12,
+    paddingTop: 12,
 
-  paddingHorizontal: 4,
-},
+    paddingHorizontal: 4,
+  },
 });

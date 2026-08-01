@@ -7,7 +7,6 @@ import {
   View,
 } from 'react-native';
 
-// 1️⃣ expo-router에서 useFocusEffect 불러오기
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -24,8 +23,6 @@ import styles from '../../src/styles/recommend.styles';
 import { OutfitItem } from '../../src/types/outfit';
 
 const RecommendScreen = () => {
-  // 2️⃣ 기존에 선언만 해두고 사용하지 않던 route, navigation 변수 삭제 (코드 최적화)
-
   const scrollRef = useRef<ScrollView>(null);
   const [selectedItem, setSelectedItem] = useState<OutfitItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -87,15 +84,16 @@ const RecommendScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 🌟 1. 키보드 오프셋 수정 (마이너스 값 제거!) */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={-38}>
-        
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+
         {/* Header */}
         <RecommendHeader onPressMenu={() => setMenuVisible(true)} />
 
-        {/* Chat Area */}
+        {/* Chat Area - flex: 1을 주어 남은 높이 차지 */}
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
@@ -105,7 +103,7 @@ const RecommendScreen = () => {
           onContentSizeChange={() =>
             scrollRef.current?.scrollToEnd({ animated: true })
           }>
-          {currentChat.messages.map(item => {
+          {currentChat?.messages?.map(item => {
             if (item.type === 'message') {
               return (
                 <View key={item.id} style={{ marginBottom: 0 }}>
@@ -130,7 +128,7 @@ const RecommendScreen = () => {
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        {/* Bottom Section */}
+        {/* Bottom Section (하단 룩프롬프트 + 채팅 입력창) */}
         <RecommendBottomSection
           showOptions={showOptions}
           setShowOptions={setShowOptions}

@@ -8,6 +8,15 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 const model1 = require('../assets/avatar/base_avatar.png');
 const CHAT_STORAGE_KEY = 'MYVFF_CHAT_DATA';
 
+// 이미지 URL 처리 헬퍼 함수 (무신사 온라인 URL과 로컬 이미지 구분)
+const resolveImageUrl = (imagePath: string | undefined) => {
+  if (!imagePath) return '';
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath; // 이미 무신사 온라인 URL이면 그대로 사용!
+  }
+  return `${API_BASE_URL}/${imagePath}`; // 로컬 파일명인 경우에만 백엔드 주소 붙임
+};
+
 // 초기 메시지 생성 함수 및 변수 선언
 const createInitialMessage = (): ChatMessage => ({
   id: 0,
@@ -92,10 +101,14 @@ const useRecommendChat = () => {
 
     setLoading(true);
     try {
+      // 🌟 room_id를 백엔드에 함께 전달
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmedText }),
+        body: JSON.stringify({
+          message: trimmedText,
+          room_id: String(currentChatId),
+        }),
       });
 
       const data = await response.json();
@@ -105,16 +118,29 @@ const useRecommendChat = () => {
 
       setRecommendedItems(data.items);
 
-      const items = [data.items?.outer, data.items?.top, data.items?.bottom, data.items?.dress, data.items?.shoes, data.items?.bag]
-        .filter(Boolean)
-        .map((item: any) => ({
-          id: String(item.id),
-          name: item.name || item.category,
-          image: `${API_BASE_URL}/${item.image}`,
-          type: 'closet',
-          tags: item.style ? item.style.split(',').map((tag: string) => tag.trim()) : [],
-          similarItems: [],
-        }));
+      // 🌟 무신사 관련 정보(is_shop, buy_url, brand, price)까지 매핑 + URL 분기 처리
+      const rawItems = [
+        data.items?.outer,
+        data.items?.top,
+        data.items?.bottom,
+        data.items?.dress,
+        data.items?.shoes,
+        data.items?.bag,
+        data.items?.accessory,
+      ].filter(Boolean);
+
+      const items = rawItems.map((item: any) => ({
+        id: String(item.id),
+        name: item.name || item.category,
+        image: resolveImageUrl(item.image), // 👈 온라인 URL/로컬 구분
+        type: item.is_shop ? 'shop' : 'closet',
+        tags: item.style ? item.style.split(',').map((tag: string) => tag.trim()) : [],
+        is_shop: item.is_shop || false,
+        buy_url: item.buy_url || '',
+        brand: item.brand || '',
+        price: item.price || 0,
+        similarItems: [],
+      }));
 
       const aiMessage: ChatMessage = {
         id: Date.now() + 1,
@@ -123,18 +149,24 @@ const useRecommendChat = () => {
         text: data.message || '코디 추천 결과가 도착했어요 ✨',
       };
 
-      const outfitMessage: OutfitMessage = {
-        id: Date.now() + 2,
-        type: 'outfit',
-        outfits: [{
-          id: String(Date.now()),
-          modelImage: data.outfit_image ? `${API_BASE_URL}/${data.outfit_image}` : model1,
-          items,
-        }],
-      };
+      // 추천받은 옷 아이템이 1개라도 존재하는 경우에만 카드 메시지 생성
+      const newMessages: ChatMessage[] = [aiMessage];
+
+      if (items.length > 0) {
+        const outfitMessage: OutfitMessage = {
+          id: Date.now() + 2,
+          type: 'outfit',
+          outfits: [{
+            id: String(Date.now()),
+            modelImage: data.outfit_image ? resolveImageUrl(data.outfit_image) : model1,
+            items,
+          }],
+        };
+        newMessages.push(outfitMessage);
+      }
 
       setChatRooms(prev =>
-        prev.map(room => room.id === currentChatId ? { ...room, messages: [...room.messages, aiMessage, outfitMessage] } : room)
+        prev.map(room => room.id === currentChatId ? { ...room, messages: [...room.messages, ...newMessages] } : room)
       );
     } catch (error) {
       Alert.alert('ERROR', String(error));

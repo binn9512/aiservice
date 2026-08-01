@@ -456,7 +456,7 @@ def chat_api():
     user_data = request.json
     user_message = user_data.get('message', '')
 
-    # 🌟 [수정 1] 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
+    # 🌟 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
     room_id = user_data.get('room_id', 'default')
     
     # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
@@ -466,96 +466,76 @@ def chat_api():
     try:
         ai_json = json.loads(ai_string_response)
 
+        # 💡 [핵심] get_any_item_info를 통해 내 옷장(MY_)과 무신사(SHOP_)를 자동 판별하여 정보 조회
+        top_info = get_any_item_info(ai_json.get('top'))
+        bottom_info = get_any_item_info(ai_json.get('bottom'))
+        outer_info = get_any_item_info(ai_json.get('outer'))
+        dress_info = get_any_item_info(ai_json.get('dress'))
+        shoes_info = get_any_item_info(ai_json.get('shoes'))
+        bag_info = get_any_item_info(ai_json.get('bag'))
+        accessory_info = get_any_item_info(ai_json.get('accessory'))
         
-        
-        # AI가 추천한 부위별 옷 ID 추출
-        top_id = extract_id(ai_json.get('top'))
-        bottom_id = extract_id(ai_json.get('bottom'))
-        outer_id = extract_id(ai_json.get('outer'))
-        dress_id = extract_id(ai_json.get('dress'))
-        shoes_id =extract_id(ai_json.get('shoes'))
-        bag_id = extract_id(ai_json.get('bag'))
-        accessory_id =extract_id(ai_json.get('accessory'))
-        
+        # 터미널 디버깅용 출력
         print(json.dumps({
-            "top": get_item_info_by_id(top_id),
-            "bottom": get_item_info_by_id(bottom_id),
-            "outer": get_item_info_by_id(outer_id),
-            "dress": get_item_info_by_id(dress_id),
-            "shoes": get_item_info_by_id(shoes_id),
-            "bag": get_item_info_by_id(bag_id),
-            "accessory": get_item_info_by_id(accessory_id)
+            "top": top_info,
+            "bottom": bottom_info,
+            "outer": outer_info,
+            "dress": dress_info,
+            "shoes": shoes_info,
+            "bag": bag_info,
+            "accessory": accessory_info
         }, indent=2, ensure_ascii=False))
 
-        outfit_image = get_demo_outfit_image(
-            ai_json
-        )
-
-
-        '''outfit_image = generate_outfit_image(
-            dress=get_item_info_by_id(dress_id)["image"]
-            if get_item_info_by_id(dress_id)
-            else None,
-
-            top=get_item_info_by_id(top_id)["image"]
-            if get_item_info_by_id(top_id)
-            else None,
-
-            bottom=get_item_info_by_id(bottom_id)["image"]
-            if get_item_info_by_id(bottom_id)
-            else None,
-
-            outer=get_item_info_by_id(outer_id)["image"]
-            if get_item_info_by_id(outer_id)
-            else None,
-
-            shoes=get_item_info_by_id(shoes_id)["image"]
-            if get_item_info_by_id(shoes_id)
-            else None,
-
-            bag=get_item_info_by_id(bag_id)["image"]
-            if get_item_info_by_id(bag_id)
-            else None,
-        )
-
-        print(
-            "🔥 outfit_image =",
-            outfit_image
-        )'''
+        # 합성 데모 이미지 생성 함수 호출
+        outfit_image = get_demo_outfit_image(ai_json)
         
-        # ID를 바탕으로 실제 웹에서 접근 가능한 이미지 주소로 치환
+        # 이미지 주소 추출 보조 도구 (내 옷장은 로컬 경로 포맷팅, 무신사는 온라인 URL 그대로 사용)
+        def resolve_image_url(info):
+            if not info or not info.get("image"):
+                return None
+            image_val = info["image"]
+            # 이미 http로 시작하는 무신사 온라인 URL인 경우 그대로 반환
+            if str(image_val).startswith("http"):
+                return image_val
+            # 내 옷장 로컬 파일명인 경우 기존 호스팅 경로 함수 호출
+            return get_image_path_by_id(extract_id(info.get("id")))
+
+        # 프론트엔드로 반환할 최종 데이터
         return jsonify({
             "success": True,
             "message": ai_json.get('message'),
-
             "outfit_image": outfit_image,
 
+            # 개별 이미지 주소 맵
             "images": {
-                "top": get_image_path_by_id(top_id),
-                "bottom": get_image_path_by_id(bottom_id),
-                "outer": get_image_path_by_id(outer_id),
-                "dress": get_image_path_by_id(dress_id),
-                "shoes": get_image_path_by_id(shoes_id),
-                "bag": get_image_path_by_id(bag_id),
-                "accessory": get_image_path_by_id(accessory_id)
+                "top": resolve_image_url(top_info),
+                "bottom": resolve_image_url(bottom_info),
+                "outer": resolve_image_url(outer_info),
+                "dress": resolve_image_url(dress_info),
+                "shoes": resolve_image_url(shoes_info),
+                "bag": resolve_image_url(bag_info),
+                "accessory": resolve_image_url(accessory_info)
             },
 
+            # 상세 옷 정보 맵 (is_shop, buy_url, price 포함)
             "items": {
-                "top": get_item_info_by_id(top_id),
-                "bottom": get_item_info_by_id(bottom_id),
-                "outer": get_item_info_by_id(outer_id),
-                "dress": get_item_info_by_id(dress_id),
-                "shoes": get_item_info_by_id(shoes_id),
-                "bag": get_item_info_by_id(bag_id),
-                "accessory": get_item_info_by_id(accessory_id)
+                "top": top_info,
+                "bottom": bottom_info,
+                "outer": outer_info,
+                "dress": dress_info,
+                "shoes": shoes_info,
+                "bag": bag_info,
+                "accessory": accessory_info
             }
         })
         
     except Exception as e:
+        print(f"❌ /chat 라우트 에러 발생: {e}")
         return jsonify({
             "success": False,
             "message": f"코디 생성 처리 중 오류가 발생했습니다. (에러: {e})",
-            "images": {}
+            "images": {},
+            "items": {}
         })
 
 
