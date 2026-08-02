@@ -88,7 +88,7 @@ const RecommendScreen = () => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+        keyboardVerticalOffset={Platform.OS === 'ios' ? -40 : 0}>
 
         {/* Header */}
         <RecommendHeader onPressMenu={() => setMenuVisible(true)} />

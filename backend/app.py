@@ -30,6 +30,8 @@ conn.close()
 
 load_dotenv()
 
+SERVER_URL = os.getenv("SERVER_URL")
+
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 print("HF TOKEN =", HF_TOKEN)
@@ -125,43 +127,37 @@ def analyze_image():
 
 # 옷 ID를 기반으로 DB에서 실제 이미지 경로를 찾아주는 내부 도우미 함수
 def get_image_path_by_id(item_id):
-    # (기존 DB 조회 및 파일명 가져오는 로직...)
-    # 예: image_name = row[0]
-    
-    # 💡 반환되는 URL 주소에서 역슬래시(\)를 슬래시(/)로 완벽 교체!
-    if image_name:
-        clean_path = str(image_name).replace("\\", "/")
-        if not clean_path.startswith("http"):
-            if not clean_path.startswith("/"):
-                clean_path = "/" + clean_path
-            return f"http://172.20.10.3:5001{clean_path}"
-        return clean_path
-    return None
-        
     try:
         import os
+        import sqlite3
 
         print("현재 작업 폴더:", os.getcwd())
         print("DB 절대경로:", os.path.abspath("codi_v2.db"))
 
-        conn = sqlite3.connect('codi_v2.db') 
+        conn = sqlite3.connect("codi_v2.db")
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT processed_image FROM clothes WHERE clothes_id = ?", (clothing_id,))
+
+        cursor.execute(
+            "SELECT processed_image FROM clothes WHERE clothes_id = ?",
+            (item_id,)
+        )
+
         row = cursor.fetchone()
         conn.close()
-        
+
         if row and row[0]:
-            db_path = row[0]  # 예: 'output\skirt_no_bg.png'
-            
-            # 역슬래시(\)를 슬래시(/)로 변환하고 static 경로 포맷팅
-            clean_path = db_path.replace('\\', '/')
-            if not clean_path.startswith('static/'):
-                clean_path = 'static/' + clean_path
-                
+            clean_path = str(row[0]).replace("\\", "/").strip()
+
+            if not clean_path.startswith("http"):
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
+
+                return f"{SERVER_URL}{clean_path}"
+
             return clean_path
-            
+
         return None
+
     except Exception as e:
         print(f"❌ DB 이미지 경로 조회 오류: {e}")
         return None
@@ -235,7 +231,7 @@ def get_item_info_by_id(clothing_id):
             if not clean_path.startswith("http"):
                 if not clean_path.startswith("/"):
                     clean_path = "/" + clean_path
-                img_path = f"http://172.20.10.3:5001{clean_path}"
+                img_path = f"{SERVER_URL}{clean_path}"
             else:
                 img_path = clean_path
 
@@ -928,7 +924,7 @@ def generate_avatar():
         return jsonify({
             "success": True,
             "avatar_url":
-            f"http://192.168.219.123:5001/output/{avatar_filename}"
+            f"{SERVER_URL}/output/{avatar_filename}"
         })
 
     except Exception as e:
