@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function LookbookDetail() {

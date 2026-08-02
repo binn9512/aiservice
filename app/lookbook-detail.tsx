@@ -10,45 +10,54 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import axios from 'axios';
+import {
+  useRouter,
+  useLocalSearchParams,
+} from 'expo-router';
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 
 export default function LookbookDetailPage() {
   const router = useRouter();
-  const [lookbooks, setLookbooks] = useState<any[]>([]);
 
-  const loadLookbooks = async () => {
+  const { collectionId, title } =
+    useLocalSearchParams<{
+      collectionId: string;
+      title: string;
+    }>();
+
+  const [outfits, setOutfits] = useState<any[]>([]);
+
+  const loadOutfits = async () => {
     try {
-        const saved = await AsyncStorage.getItem('LOOKBOOKS');
+      const res = await axios.get(
+        `${API_BASE_URL}/collection/${collectionId}`
+      );
 
-        if (saved) {
-        setLookbooks(JSON.parse(saved));
-        } else {
-        setLookbooks([]);
-        }
+      if (res.data.success) {
+        setOutfits(res.data.outfits);
+      }
     } catch (e) {
-        console.log(e);
+      console.log(e);
     }
-    };
+  };
 
-    useEffect(() => {
-    loadLookbooks();
-    }, []);
+  useEffect(() => {
+    if (collectionId) {
+      loadOutfits();
+    }
+  }, [collectionId]);
 
   const renderItem = ({ item }: any) => (
     <TouchableOpacity
       activeOpacity={0.9}
       style={styles.card}
       onPress={() => {
-        router.push({
-            pathname: '/lookbook-outfit-detail',
-            params: {
-                outfitId: item.id,
-            },
-            });
-        }}
+        router.push('/lookbook-outfit-detail');
+      }}
     >
       <Image
       source={
@@ -79,7 +88,7 @@ export default function LookbookDetailPage() {
         </TouchableOpacity>
 
         <Text style={styles.title}>
-          2026.07.27
+          {title}
         </Text>
 
         <TouchableOpacity>
@@ -93,11 +102,11 @@ export default function LookbookDetailPage() {
       </View>
 
       <Text style={styles.count}>
-        {lookbooks.length}개의 코디
+        {outfits.length}개의 코디
       </Text>
 
       <FlatList
-        data={lookbooks}
+        data={outfits}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         numColumns={2}

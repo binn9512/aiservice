@@ -721,14 +721,87 @@ def get_collections():
     try:
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
-        cursor.execute("SELECT collection_id, collection_name FROM collections WHERE user_id = 'su_ryong'")
+        cursor.execute("""
+            SELECT collection_id, collection_name, created_at
+            FROM collections
+            WHERE user_id = ?
+        """, ("su_ryong",))
+
         rows = cursor.fetchall()
+
+        collection_list = []
+
+        for row in rows:
+            collection_id = row[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM saved_outfits
+                WHERE collection_id = ?
+            """, (collection_id,))
+
+            count = cursor.fetchone()[0]
+
+            collection_list.append({
+                "id": row[0],
+                "name": row[1],
+                "created_at": row[2][:10].replace("-", "."),
+                "count": count,
+                "images": []
+            })
+
         conn.close()
         
-        collection_list = [{"id": row[0], "name": row[1]} for row in rows]
         return jsonify({"success": True, "collections": collection_list})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+# 새 콜렉션(룩북) 생성 API
+@app.route('/create-collection', methods=['POST'])
+def create_collection():
+    data = request.json
+
+    user_id = "su_ryong"
+
+    collection_name = data.get("name", "").strip()
+
+    if not collection_name:
+        from datetime import datetime
+        collection_name = datetime.now().strftime("%Y.%m.%d")
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO collections (
+                user_id,
+                collection_name
+            )
+            VALUES (?, ?)
+        """, (
+            user_id,
+            collection_name
+        ))
+
+        collection_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "collection": {
+                "id": collection_id,
+                "name": collection_name
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 # 사용자가 선택한 폴더에 추천 코디 세트를 저장하는 API
 @app.route('/save-outfit', methods=['POST'])
@@ -770,7 +843,7 @@ def get_collection_outfits(collection_id):
 
         cursor.execute("""
             SELECT
-                outfit_id,
+                saved_id,
                 top_id,
                 bottom_id,
                 outer_id,
@@ -779,7 +852,7 @@ def get_collection_outfits(collection_id):
                 accessory_id
             FROM saved_outfits
             WHERE collection_id = ?
-            ORDER BY outfit_id DESC
+            ORDER BY saved_id DESC
         """, (collection_id,))
 
         rows = cursor.fetchall()
@@ -789,7 +862,7 @@ def get_collection_outfits(collection_id):
 
         for row in rows:
             outfit_list.append({
-                "outfit_id": row[0],
+                "saved_id": row[0],
                 "items": {
                     "top": get_any_item_info(row[1]),
                     "bottom": get_any_item_info(row[2]),
@@ -799,6 +872,8 @@ def get_collection_outfits(collection_id):
                     "accessory": get_any_item_info(row[6])
                 }
             })
+
+        conn.close()
 
         return jsonify({
             "success": True,
@@ -812,16 +887,16 @@ def get_collection_outfits(collection_id):
         }), 500
 
 # 저장된 코디 하나를 삭제하는 API
-@app.route('/saved-outfit/<int:outfit_id>', methods=['DELETE'])
-def delete_saved_outfit(outfit_id):
+@app.route('/saved-outfit/<int:saved_id>', methods=['DELETE'])
+def delete_saved_outfit(saved_id):
     try:
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
 
         cursor.execute("""
             DELETE FROM saved_outfits
-            WHERE outfit_id = ?
-        """, (outfit_id,))
+            WHERE saved_id = ?
+        """, (saved_id,))
 
         conn.commit()
         conn.close()

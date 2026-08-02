@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,55 +11,54 @@ import {
   Platform,
 } from 'react-native';
 
+import axios from 'axios';
+
 import LookbookCard from './LookbookCard';
 
 import { useRouter } from 'expo-router';
 
-const initialLookbooks = [
-  {
-    id: 'add',
-    type: 'add',
-  },
-  {
-    id: '1',
-    title: '데이트룩',
-    count: 16,
-    images: [
-      'https://picsum.photos/200?1',
-      'https://picsum.photos/200?2',
-      'https://picsum.photos/200?3',
-      'https://picsum.photos/200?4',
-    ],
-  },
-  {
-    id: '2',
-    title: '출근룩',
-    count: 12,
-    images: [
-      'https://picsum.photos/200?5',
-      'https://picsum.photos/200?6',
-      'https://picsum.photos/200?7',
-      'https://picsum.photos/200?8',
-    ],
-  },
-  {
-    id: '3',
-    title: '캐주얼',
-    count: 9,
-    images: [
-      'https://picsum.photos/200?9',
-      'https://picsum.photos/200?10',
-      'https://picsum.photos/200?11',
-      'https://picsum.photos/200?12',
-    ],
-  },
-];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
+
 
 export default function LookbookGrid() {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const [lookbookName, setLookbookName] = useState('');
-  const [lookbooks, setLookbooks] = useState(initialLookbooks);
+  const [lookbooks, setLookbooks] = useState<any[]>([
+    {
+      id: 'add',
+      type: 'add',
+    },
+  ]);
+
+  const loadLookbooks = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/get-collections`
+      );
+
+      if (res.data.success) {
+        setLookbooks([
+          {
+            id: 'add',
+            type: 'add',
+          },
+          ...res.data.collections.map((item: any) => ({
+            id: String(item.id),
+            title: item.name,
+            count: item.count,
+            images: [],
+          })),
+        ]);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  useEffect(() => {
+    loadLookbooks();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -75,7 +74,13 @@ export default function LookbookGrid() {
               if (item.type === 'add') {
                 setModalVisible(true);
               } else {
-                router.push('/lookbook-detail');
+                router.push({
+                  pathname: '/lookbook-detail',
+                  params: {
+                    collectionId: item.id,
+                    title: item.title,
+                  },
+                });
               }
             }}
           />
@@ -126,24 +131,23 @@ export default function LookbookGrid() {
 
               <Pressable
                 style={styles.createButton}
-                onPress={() => {
-                  if (!lookbookName.trim()) return;
+                onPress={async () => {
+                  try {
+                    await axios.post(
+                      `${API_BASE_URL}/create-collection`,
+                      {
+                        name: lookbookName,
+                      }
+                    );
 
-                  const newLookbook = {
-                    id: Date.now().toString(),
-                    title: lookbookName,
-                    count: 0,
-                    images: [],
-                  };
+                    await loadLookbooks();
 
-                  setLookbooks(prev => [
-                    prev[0],          // + 카드 유지
-                    newLookbook,      // 새 룩북
-                    ...prev.slice(1), // 기존 룩북
-                  ]);
+                    setLookbookName('');
+                    setModalVisible(false);
 
-                  setLookbookName('');
-                  setModalVisible(false);
+                  } catch (e) {
+                    console.log(e);
+                  }
                 }}
               >
                 <Text style={styles.createButtonText}>생성</Text>
