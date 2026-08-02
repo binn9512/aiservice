@@ -124,9 +124,19 @@ def analyze_image():
 # =========================================================================
 
 # 옷 ID를 기반으로 DB에서 실제 이미지 경로를 찾아주는 내부 도우미 함수
-def get_image_path_by_id(clothing_id):
-    if not clothing_id or clothing_id == "null" or clothing_id == "":
-        return None
+def get_image_path_by_id(item_id):
+    # (기존 DB 조회 및 파일명 가져오는 로직...)
+    # 예: image_name = row[0]
+    
+    # 💡 반환되는 URL 주소에서 역슬래시(\)를 슬래시(/)로 완벽 교체!
+    if image_name:
+        clean_path = str(image_name).replace("\\", "/")
+        if not clean_path.startswith("http"):
+            if not clean_path.startswith("/"):
+                clean_path = "/" + clean_path
+            return f"http://172.20.10.3:5001{clean_path}"
+        return clean_path
+    return None
         
     try:
         import os
@@ -198,11 +208,11 @@ def get_item_info_by_id(clothing_id):
 
         cursor.execute("""
             SELECT clothes_id,
-                category,
-                style,
-                color,
-                processed_image,
-                name
+                   category,
+                   style,
+                   color,
+                   processed_image,
+                   name
             FROM clothes
             WHERE clothes_id = ?
         """, (clothing_id,))
@@ -213,12 +223,29 @@ def get_item_info_by_id(clothing_id):
         if not row:
             return None
 
+        # 💡 [핵심 해결] 역슬래시(\)를 웹 URL용 슬래시(/)로 바꾸고 호스팅 Full URL 생성
+        raw_img = row[4]
+        img_path = None
+
+        if raw_img:
+            # 1. 역슬래시 -> 슬래시 변환
+            clean_path = str(raw_img).replace("\\", "/").strip()
+            
+            # 2. 이미 http로 시작하는 URL이 아니면 풀 URL로 가공
+            if not clean_path.startswith("http"):
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
+                img_path = f"http://172.20.10.3:5001{clean_path}"
+            else:
+                img_path = clean_path
+
         return {
             "id": row[0],
             "category": row[1],
             "style": row[2],
             "color": row[3],
-            "image": row[4],
+            "image": img_path,      # 🌟 슬래시(/) 변환된 full URL
+            "img_url": img_path,    # 🌟 img_url 키도 동일하게 제공 (호환성 보장)
             "name": row[5]
         }
 
@@ -384,7 +411,6 @@ def generate_outfit_image(
         )
         return None
 
-# 무신사 DB(musinsa_clothes)에서 상품 정보 조회하는 도우미 함수
 def get_musinsa_item_by_id(musinsa_id):
     if not musinsa_id or musinsa_id == "null" or musinsa_id == "":
         return None
@@ -392,6 +418,8 @@ def get_musinsa_item_by_id(musinsa_id):
     try:
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
+
+        clean_musinsa_id = str(musinsa_id).replace("SHOP_", "").replace("ID:", "").strip()
 
         cursor.execute("""
             SELECT musinsa_id,
@@ -403,51 +431,63 @@ def get_musinsa_item_by_id(musinsa_id):
                    product_url,
                    price
             FROM musinsa_clothes
-            WHERE musinsa_id = ?
-        """, (musinsa_id,))
+            WHERE musinsa_id = ? OR musinsa_id = ?
+        """, (clean_musinsa_id, f"SHOP_{clean_musinsa_id}"))
 
         row = cursor.fetchone()
         conn.close()
 
+        # 🔍 DB에서 실제 읽어온 데이터 원본 터미널에 출력하기!
+        print(f"🔍 [무신사 DB Raw Row ({clean_musinsa_id})]:", row)
+
         if not row:
             return None
+
+        # row[4]가 img_url 위치입니다.
+        img_link = row[4] if len(row) > 4 else None
+        if img_link:
+            img_link = str(img_link).replace("\\", "/").strip()
+
+        buy_link = row[6] if len(row) > 6 else None
 
         return {
             "id": f"SHOP_{row[0]}",
             "category": row[1],
             "style": row[2],
             "color": row[3],
-            "img_url": row[4],       # 무신사 온라인 이미지 URL
+            "img_url": img_link,
+            "image": img_link,
             "name": row[5],
-            "product_url": row[6],   # 무신사 구매 링크
-            "price": row[7],       # 가격
-            "is_shop": True        # 👈 쇼핑몰 상품임을 구분하는 플래그!
+            "product_url": buy_link,
+            "buy_url": buy_link,
+            "price": row[7] if len(row) > 7 else 0,
+            "is_shop": True
         }
 
     except Exception as e:
         print(f"❌ 무신사 옷 정보 조회 오류: {e}")
         return None
-
-
 # ID가 MY_인지 SHOP_인지 판별하여 맞춤 조회를 해주는 통합 함수
 def get_any_item_info(item_code):
     if not item_code or item_code == "null" or item_code == "":
         return None
     
-    item_str = str(item_code)
+    item_str = str(item_code).strip()
     
     # "SHOP_12" 또는 "ID:SHOP_12" 형태로 넘어온 경우 ➔ 무신사 DB 조회
     if "SHOP_" in item_str:
-        clean_id = extract_id(item_str)
+        # "SHOP_218" -> "218" 추출
+        clean_id = item_str.replace("ID:", "").replace("SHOP_", "").strip()
         return get_musinsa_item_by_id(clean_id)
     
     # "MY_4" 또는 "4" 또는 "ID:4" 형태 ➔ 내 옷장 DB 조회
     else:
-        clean_id = extract_id(item_str)
+        clean_id = extract_id(item_str) if 'extract_id' in globals() else item_str.replace("ID:", "").replace("MY_", "").strip()
         info = get_item_info_by_id(clean_id)
         if info:
             info["is_shop"] = False  # 내 옷장 옷
             info["product_url"] = None
+            info["buy_url"] = None
         return info
     
 # 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
@@ -489,16 +529,47 @@ def chat_api():
         # 합성 데모 이미지 생성 함수 호출
         outfit_image = get_demo_outfit_image(ai_json)
         
-        # 이미지 주소 추출 보조 도구 (내 옷장은 로컬 경로 포맷팅, 무신사는 온라인 URL 그대로 사용)
+        # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
         def resolve_image_url(info):
-            if not info or not info.get("image"):
+            if not info:
                 return None
-            image_val = info["image"]
-            # 이미 http로 시작하는 무신사 온라인 URL인 경우 그대로 반환
-            if str(image_val).startswith("http"):
-                return image_val
-            # 내 옷장 로컬 파일명인 경우 기존 호스팅 경로 함수 호출
+            
+            # 무신사는 img_url, 내 옷장은 image/image_url 필드 참조
+            image_val = info.get("img_url") or info.get("image") or info.get("image_url")
+            if not image_val:
+                return None
+
+            image_str = str(image_val).replace("\\", "/")  # 윈도우 역슬래시(\) -> 웹 슬래시(/) 변환
+
+            # 무신사 이미지 (http/https로 시작하는 경우)
+            if image_str.startswith("http"):
+                return image_str
+            
+            # 내 옷장 이미지 (상대 경로인 경우 호스팅 경로 처리)
             return get_image_path_by_id(extract_id(info.get("id")))
+
+        # 프론트엔드가 image, img_url 어떤 필드로 읽어도 다 뜨도록 items 객체 내부 정제
+        all_items = {
+            "top": top_info,
+            "bottom": bottom_info,
+            "outer": outer_info,
+            "dress": dress_info,
+            "shoes": shoes_info,
+            "bag": bag_info,
+            "accessory": accessory_info
+        }
+
+        for cat, item in all_items.items():
+            if item and isinstance(item, dict):
+                final_url = resolve_image_url(item)
+                item["image"] = final_url
+                item["img_url"] = final_url
+
+                # 무신사 구매 링크 키 통일
+                raw_link = item.get("product_url") or item.get("buy_url")
+                if raw_link:
+                    item["buy_url"] = raw_link
+                    item["product_url"] = raw_link
 
         # 프론트엔드로 반환할 최종 데이터
         return jsonify({
@@ -517,16 +588,8 @@ def chat_api():
                 "accessory": resolve_image_url(accessory_info)
             },
 
-            # 상세 옷 정보 맵 (is_shop, buy_url, price 포함)
-            "items": {
-                "top": top_info,
-                "bottom": bottom_info,
-                "outer": outer_info,
-                "dress": dress_info,
-                "shoes": shoes_info,
-                "bag": bag_info,
-                "accessory": accessory_info
-            }
+            # 상세 옷 정보 맵
+            "items": all_items
         })
         
     except Exception as e:
@@ -537,7 +600,6 @@ def chat_api():
             "images": {},
             "items": {}
         })
-
 
 # =========================================================================
 # 👗 5. 옷장(Closet) 및 코디 저장 관리 API

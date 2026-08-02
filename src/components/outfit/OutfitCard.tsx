@@ -18,8 +18,11 @@ import { useRouter } from 'expo-router';
 type ExtendedOutfitItem = OutfitItem & {
   is_shop?: boolean;
   buy_url?: string;
+  product_url?: string;
   brand?: string;
   price?: number;
+  img_url?: string;
+  image_url?: string;
 };
 
 type Props = {
@@ -37,7 +40,6 @@ const OutfitCard = ({
 }: Props) => {
   const router = useRouter();
 
-  // 🌟 outfit 또는 items가 undefined일 때 튕기지 않도록 방어 처리
   const itemList = outfit?.items || [];
 
   if (!outfit || itemList.length === 0) {
@@ -62,55 +64,90 @@ const OutfitCard = ({
 
       {/* Item List */}
       <View style={styles.itemSection}>
-        {itemList.map((rawItem) => {
+        {itemList.map((rawItem, itemIndex) => {
           const item = rawItem as ExtendedOutfitItem;
 
           // 무신사 상품 여부 판별
           const isShop = item?.is_shop || (typeof item?.id === 'string' && item.id.startsWith('SHOP_'));
 
+          // 고유 Key 생성
+          const itemKey = item?.id ? `${item.id}-${itemIndex}` : `item-${itemIndex}`;
+
+          // 구매 링크 추출
+          const rawLink = item?.buy_url || item?.product_url;
+          const hasValidLink = typeof rawLink === 'string' && rawLink !== 'nan' && rawLink.startsWith('http');
+
+          // 🔍 터미널 이미지 주소 디버깅 확인용
+          const debugUri = item?.img_url || item?.image_url || (typeof item?.image === 'string' ? item.image : undefined);
+          console.log(`[Item ${itemIndex}] 이름: ${item?.name} | 이미지주소:`, debugUri);
+
           return (
             <TouchableOpacity
-              key={item?.id || Math.random().toString()}
+              key={itemKey}
               activeOpacity={0.8}
               style={[
                 styles.itemButton,
                 isShop && { borderColor: '#333333', backgroundColor: '#FAFAFA' }
               ]}
               onPress={() => {
-                // 🛍️ 무신사 상품이면 누르는 순간 무신사 구매 페이지로 이동!
-                if (isShop && item?.buy_url) {
-                  Linking.openURL(item.buy_url);
+                if (isShop && hasValidLink) {
+                  Linking.openURL(rawLink);
                 } else if (onItemPress) {
                   onItemPress(item);
                 }
               }}>
-
-              {/* 옷 이미지 */}
+              {/* 🌟 옷 이미지 렌더링 영역 */}
               <Image
-                source={
-                  typeof item?.image === 'string'
-                    ? { uri: item.image }
-                    : item?.image
-                }
+                source={(() => {
+                  // 1. 후보 키에서 이미지 주소 추출
+                  let imgUri = item?.img_url || item?.image_url || (typeof item?.image === 'string' ? item.image : undefined);
+
+                  if (imgUri && typeof imgUri === 'string') {
+                    // 역슬래시(\) -> 웹 슬래시(/) 변환
+                    imgUri = imgUri.replace(/\\/g, '/').trim();
+
+                    // 무신사 CDN 주소가 //image.msscdn.net... 처럼 스키마 없이 넘어올 경우 대응
+                    if (imgUri.startsWith('//')) {
+                      imgUri = 'https:' + imgUri;
+                    }
+                    // http로 시작하는 무신사 주소는 iOS 차단 방지를 위해 https로 변경
+                    else if (imgUri.startsWith('http://image.msscdn.net')) {
+                      imgUri = imgUri.replace('http://', 'https://');
+                    }
+
+                    if (imgUri !== '' && imgUri !== 'nan') {
+                      // 💡 무신사 이미지 CDN 403 차단 우회를 위한 Header 추가
+                      return {
+                        uri: imgUri,
+                        headers: {
+                          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
+                          'Referer': 'https://www.musinsa.com/',
+                        },
+                      };
+                    }
+                  }
+
+                  // 2. require() 로컬 객체인 경우
+                  if (item?.image && typeof item.image !== 'string') {
+                    return item.image;
+                  }
+
+                  // 3. 주소가 없거나 로딩 실패 시 기본 이미지
+                  return { uri: 'https://via.placeholder.com/100?text=No+Image' };
+                })()}
                 style={{
-                  width: 40,
-                  height: 40,
-                  marginRight: 10,
+                  width: 60,
+                  height: 60,
+                  marginRight: 12,
                   borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
                 }}
                 resizeMode="contain"
               />
 
               {/* 옷 정보 영역 */}
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                }}>
-                <Text
-                  numberOfLines={1}
-                  style={styles.itemName}>
-                  {/* 무신사 옷일 경우 브랜드 강조 */}
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <Text numberOfLines={1} style={styles.itemName}>
                   {isShop && item?.brand ? (
                     <Text style={{ fontWeight: 'bold', color: '#000000' }}>
                       [{item.brand}]{' '}
