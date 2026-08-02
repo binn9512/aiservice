@@ -761,6 +761,115 @@ def save_outfit():
     except Exception as e:
         return jsonify({"success": False, "message": f"저장 실패 ㅠㅠ 에러: {e}"}), 500
 
+# 사용자가 선택한 콜렉션 안의 저장된 코디 목록 조회 API
+@app.route('/collection/<int:collection_id>', methods=['GET'])
+def get_collection_outfits(collection_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                outfit_id,
+                top_id,
+                bottom_id,
+                outer_id,
+                shoes_id,
+                bag_id,
+                accessory_id
+            FROM saved_outfits
+            WHERE collection_id = ?
+            ORDER BY outfit_id DESC
+        """, (collection_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        outfit_list = []
+
+        for row in rows:
+            outfit_list.append({
+                "outfit_id": row[0],
+                "items": {
+                    "top": get_any_item_info(row[1]),
+                    "bottom": get_any_item_info(row[2]),
+                    "outer": get_any_item_info(row[3]),
+                    "shoes": get_any_item_info(row[4]),
+                    "bag": get_any_item_info(row[5]),
+                    "accessory": get_any_item_info(row[6])
+                }
+            })
+
+        return jsonify({
+            "success": True,
+            "outfits": outfit_list
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 저장된 코디 하나를 삭제하는 API
+@app.route('/saved-outfit/<int:outfit_id>', methods=['DELETE'])
+def delete_saved_outfit(outfit_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE outfit_id = ?
+        """, (outfit_id,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "저장된 코디가 삭제되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 콜렉션(폴더) 하나를 삭제하는 API
+@app.route('/collection/<int:collection_id>', methods=['DELETE'])
+def delete_collection(collection_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        # 먼저 해당 콜렉션 안의 저장된 코디 삭제
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE collection_id = ?
+        """, (collection_id,))
+
+        # 콜렉션 삭제
+        cursor.execute("""
+            DELETE FROM collections
+            WHERE collection_id = ?
+        """, (collection_id,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "콜렉션이 삭제되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 
 # =========================================================================
 # 💬 6. 채팅방(Chat Room) 관리 API
