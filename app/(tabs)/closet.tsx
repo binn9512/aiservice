@@ -33,6 +33,7 @@ const categories = [
   '아우터',
   '신발',
   '가방',
+  '액세서리',
 ];
 
 const ClosetScreen = () => {
@@ -95,13 +96,31 @@ const ClosetScreen = () => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
+      allowsMultipleSelection: true,
       quality: 1,
     });
 
     if (!result.canceled) {
-      uploadImage(result.assets[0]);
-    }
-  }
+
+      setIsUploading(true);
+
+      try {
+
+        for (const asset of result.assets) {
+          await uploadImage(asset);
+        }
+
+        await loadClosetItems();
+
+        Alert.alert(
+          '완료',
+          `${result.assets.length}개의 옷이 등록되었습니다.`
+        );
+
+      } finally {
+        setIsUploading(false);
+      }
+    }}
 
   async function uploadImage(asset: any) {
     try {
@@ -132,10 +151,9 @@ const ClosetScreen = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '업로드 실패');
 
-      if (data.success) {
-        await loadClosetItems();
-        Alert.alert('완료', '옷이 추가되었습니다.');
-      }
+      if (!data.success) {
+      throw new Error(data.error || '업로드 실패');
+    }
     } catch (error: any) {
       Alert.alert('오류', String(error.message));
     } finally {
@@ -166,6 +184,7 @@ const ClosetScreen = () => {
         if (selectedCategory === '아우터') return ['코트', '패딩', '자켓', '가디건', '집업'].includes(item.category);
         if (selectedCategory === '신발') return ['운동화/스니커즈', '구두/로퍼', '힐', '부츠', '샌들/슬리퍼'].includes(item.category);
         if (selectedCategory === '가방') return ['백팩', '숄더백/토트백', '크로스백', '클러치'].includes(item.category);
+        if (selectedCategory === '액세서리') return ['모자', '머플러/스카프', '벨트', '안경/선글라스', '주얼리',].includes(item.category);
         return false;
       });
 
@@ -230,6 +249,11 @@ const ClosetScreen = () => {
       </TouchableOpacity>
     );
   };
+
+  const currentCount =
+    selectedCategory === '전체'
+      ? clothesData.filter(item => item.type !== 'add').length
+      : sortedData.filter(item => item.type !== 'add').length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -347,7 +371,7 @@ const ClosetScreen = () => {
 
             <View style={styles.sortRow}>
               <Text style={styles.totalText}>
-                전체 {clothesData.filter(item => item.type !== 'add').length}개
+                {selectedCategory} {currentCount}개
               </Text>
 
               <TouchableOpacity

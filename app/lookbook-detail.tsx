@@ -8,7 +8,6 @@ import {
   FlatList,
   Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import axios from 'axios';
@@ -59,17 +58,17 @@ export default function LookbookDetailPage() {
         router.push('/lookbook-outfit-detail');
       }}
     >
-      <Image
-      source={
-        typeof item.outfitImage === 'string'
-            ? { uri: item.outfitImage }
-            : item.outfitImage
-        }
-      style={styles.image}
-      />
+      <View style={styles.image}>
+        <Ionicons
+          name="shirt-outline"
+          size={46}
+          color="#BDBDBD"
+          style={{ alignSelf: 'center', marginTop: '45%' }}
+        />
+      </View>
 
       <Text style={styles.date}>
-        {item.date}
+        저장된 코디
       </Text>
     </TouchableOpacity>
   );
@@ -107,7 +106,7 @@ export default function LookbookDetailPage() {
 
       <FlatList
         data={outfits}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.saved_id)}
         renderItem={renderItem}
         numColumns={2}
         columnWrapperStyle={styles.row}
