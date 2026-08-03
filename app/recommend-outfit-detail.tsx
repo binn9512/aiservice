@@ -130,6 +130,70 @@ export default function RecommendOutfitDetailScreen() {
       return;
     }
 
+    const top = current.items.find(item =>
+      [
+        '반팔 티셔츠',
+        '긴팔 티셔츠',
+        '셔츠/블라우스',
+        '니트/스웨터',
+        '맨투맨/후드',
+        '슬리브리스',
+      ].includes(item.category)
+    )?.id;
+
+    const bottom = current.items.find(item =>
+      [
+        '데님 팬츠',
+        '슬랙스',
+        '반바지',
+        '트레이닝 팬츠',
+        '스커트',
+      ].includes(item.category)
+    )?.id;
+
+    const dress = current.items.find(item =>
+      ['원피스'].includes(item.category)
+    )?.id;
+
+    const outer = current.items.find(item =>
+      [
+        '코트',
+        '패딩',
+        '자켓',
+        '가디건',
+        '집업',
+      ].includes(item.category)
+    )?.id;
+
+    const shoes = current.items.find(item =>
+      [
+        '운동화/스니커즈',
+        '구두/로퍼',
+        '힐',
+        '부츠',
+        '샌들/슬리퍼',
+      ].includes(item.category)
+    )?.id;
+
+    const bag = current.items.find(item =>
+      [
+        '백팩',
+        '숄더백/토트백',
+        '크로스백',
+        '클러치',
+      ].includes(item.category)
+    )?.id;
+
+    const accessory = current.items.find(item =>
+      [
+        '모자',
+        '머플러/스카프',
+        '벨트',
+        '안경/선글라스',
+        '주얼리',
+      ].includes(item.category)
+    )?.id;
+
     try {
       const today = new Date();
 
@@ -140,13 +204,17 @@ export default function RecommendOutfitDetailScreen() {
 
           title:
             lookbookTitle.trim() ||
-            new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').replace('.', ''),
-
+            '새 코디',
           memo: lookbookMemo,
 
           images: {
-            modelImage: current.modelImage,
-            items: current.items,
+            top,
+            bottom,
+            dress,
+            outer,
+            shoes,
+            bag,
+            accessory,
           },
         }
       );

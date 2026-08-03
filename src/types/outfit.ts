@@ -11,6 +11,7 @@ export type OutfitItem = {
   id: string;
   name: string;
   image: any;
+  category: string;
   type: OutfitItemType;
   tags: string[];
   similarItems: SimilarItem[];

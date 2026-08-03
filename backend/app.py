@@ -898,17 +898,15 @@ def get_collection_outfits(collection_id):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT
-                saved_id,
-                top_id,
-                bottom_id,
-                outer_id,
-                shoes_id,
-                bag_id,
-                accessory_id
-            FROM saved_outfits
-            WHERE collection_id = ?
-            ORDER BY saved_id DESC
+        SELECT
+            saved_id,
+            title,
+            memo,
+            created_at,
+            outfit_json
+        FROM saved_outfits
+        WHERE collection_id = ?
+        ORDER BY saved_id DESC
         """, (collection_id,))
 
         rows = cursor.fetchall()
@@ -917,15 +915,22 @@ def get_collection_outfits(collection_id):
         outfit_list = []
 
         for row in rows:
+
+            images = json.loads(row[4])
+
             outfit_list.append({
                 "saved_id": row[0],
+                "title": row[1],
+                "memo": row[2],
+                "created_at": row[3],   # 추가
                 "items": {
-                    "top": get_any_item_info(row[1]),
-                    "bottom": get_any_item_info(row[2]),
-                    "outer": get_any_item_info(row[3]),
-                    "shoes": get_any_item_info(row[4]),
-                    "bag": get_any_item_info(row[5]),
-                    "accessory": get_any_item_info(row[6])
+                    "top": get_any_item_info(images.get("top")),
+                    "bottom": get_any_item_info(images.get("bottom")),
+                    "dress": get_any_item_info(images.get("dress")),
+                    "outer": get_any_item_info(images.get("outer")),
+                    "shoes": get_any_item_info(images.get("shoes")),
+                    "bag": get_any_item_info(images.get("bag")),
+                    "accessory": get_any_item_info(images.get("accessory")),
                 }
             })
 

@@ -1,63 +1,66 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   TouchableOpacity,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import axios from 'axios';
 
-const dummyLookbooks = [
-  {
-    id: '1',
-    title: '데이트룩',
-    date: '2026.07.27',
-    memo: '오늘 데이트 갈 때 입었던 코디 💕',
-    outfitImage: 'https://picsum.photos/700/1000?1',
-    items: [
-      {
-        name: '화이트 셔츠',
-        image: 'https://picsum.photos/100?11',
-      },
-      {
-        name: '데님 팬츠',
-        image: 'https://picsum.photos/100?12',
-      },
-      {
-        name: '스니커즈',
-        image: 'https://picsum.photos/100?13',
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: '캠퍼스룩',
-    date: '2026.07.26',
-    memo: '편하게 입은 학교 코디',
-    outfitImage: 'https://picsum.photos/700/1000?2',
-    items: [
-      {
-        name: '후드티',
-        image: 'https://picsum.photos/100?21',
-      },
-      {
-        name: '조거팬츠',
-        image: 'https://picsum.photos/100?22',
-      },
-    ],
-  },
-];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 export default function LookbookOutfitDetailScreen() {
   const router = useRouter();
-  const { outfitId } = useLocalSearchParams();
+  const { collectionId, savedId } = useLocalSearchParams();
 
-  const current =
-    dummyLookbooks.find(v => v.id === outfitId) ??
-    dummyLookbooks[0];
+  const [current, setCurrent] = useState<any>(null);
+
+  useEffect(() => {
+    loadOutfit();
+  }, []);
+
+  const loadOutfit = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/collection/${collectionId}`
+      );
+
+      if (res.data.success) {
+        const found = res.data.outfits.find(
+          (item: any) =>
+            String(item.saved_id) === String(savedId)
+        );
+
+        if (found) {
+          setCurrent(found);
+        }
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const items = useMemo(() => {
+    if (!current) return [];
+
+    return Object.values(current.items || {}).filter(Boolean);
+  }, [current]);
+
+  if (!current) return null;
+
+  const date = new Date(current.created_at);
+
+  const formattedDate =
+    `${date.getFullYear()}.` +
+    `${String(date.getMonth() + 1).padStart(2, '0')}.` +
+    `${String(date.getDate()).padStart(2, '0')}`;
+
+  const outfitImage =
+  items.length > 0 ? (items[0] as any).image : undefined;
 
   return (
     <ScrollView
@@ -88,7 +91,7 @@ export default function LookbookOutfitDetailScreen() {
 
       <View style={styles.imageSection}>
         <Image
-          source={{ uri: current.outfitImage }}
+          source={{ uri: outfitImage }}
           style={styles.outfitImage}
         />
 
@@ -97,9 +100,9 @@ export default function LookbookOutfitDetailScreen() {
             코디 아이템
           </Text>
 
-          {current.items.map((item, index) => (
+          {items.map((item: any) => (
             <TouchableOpacity
-              key={index}
+              key={item.id}
               style={styles.itemRow}
             >
               <Image
@@ -111,7 +114,7 @@ export default function LookbookOutfitDetailScreen() {
                 numberOfLines={1}
                 style={styles.itemName}
               >
-                {item.name}
+                {item.name || item.category}
               </Text>
             </TouchableOpacity>
           ))}
@@ -124,7 +127,7 @@ export default function LookbookOutfitDetailScreen() {
         </Text>
 
         <Text style={styles.date}>
-          {current.date}
+          {formattedDate}
         </Text>
 
         <View style={styles.divider} />
@@ -134,7 +137,7 @@ export default function LookbookOutfitDetailScreen() {
         </Text>
 
         <Text style={styles.memo}>
-          {current.memo}
+          {current.memo || '메모가 없습니다.'}
         </Text>
 
         <TouchableOpacity style={styles.retryButton}>

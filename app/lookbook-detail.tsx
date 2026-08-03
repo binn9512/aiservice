@@ -55,7 +55,13 @@ export default function LookbookDetailPage() {
       activeOpacity={0.9}
       style={styles.card}
       onPress={() => {
-        router.push('/lookbook-outfit-detail');
+        router.push({
+          pathname: '/lookbook-outfit-detail',
+          params: {
+            savedId: item.saved_id,
+            collectionId,
+          },
+        });
       }}
     >
       <View style={styles.image}>
