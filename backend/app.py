@@ -809,23 +809,31 @@ def save_outfit():
     data = request.json
     user_id = 'su_ryong'  # 로그인 대용 임시 고정 유저
     collection_id = data.get('collection_id')
-    
-    images = data.get('images', {})
-    top = images.get('top')
-    bottom = images.get('bottom')
-    outer = images.get('outer')
-    shoes = images.get('shoes')
-    bag = images.get('bag')
-    accessory = images.get('accessory')
+
+    title = data.get("title", "")
+    memo = data.get("memo", "")
+    outfit_json = json.dumps(data.get("images", {}))
     
     try:
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO saved_outfits (user_id, collection_id, top_id, bottom_id, outer_id, shoes_id, bag_id, accessory_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, collection_id, top, bottom, outer, shoes, bag, accessory))
+            INSERT INTO saved_outfits (
+                user_id,
+                collection_id,
+                title,
+                memo,
+                outfit_json
+            )
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            collection_id,
+            title,
+            memo,
+            outfit_json
+        ))
         
         conn.commit()
         conn.close()

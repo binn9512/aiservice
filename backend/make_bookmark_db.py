@@ -23,12 +23,9 @@ def create_bookmark_tables():
         saved_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
         collection_id INTEGER,
-        top_id TEXT,
-        bottom_id TEXT,
-        outer_id TEXT,
-        shoes_id TEXT,
-        bag_id TEXT,
-        accessory_id TEXT,
+        title TEXT,
+        memo TEXT,
+        outfit_json TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(collection_id) REFERENCES collections(collection_id)
     );

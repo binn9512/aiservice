@@ -3,7 +3,7 @@ import json
 import requests
 from datetime import datetime
 from pathlib import Path
-from rembg import remove
+from rembg import remove, new_session
 from PIL import Image
 import torch
 from transformers import CLIPProcessor, CLIPModel
@@ -14,6 +14,8 @@ model_id = "openai/clip-vit-base-patch32"
 clip_model = CLIPModel.from_pretrained(model_id).to(device)
 clip_processor = CLIPProcessor.from_pretrained(model_id)
 
+# rembg 모델 (기존보다 흰 옷, 얇은 소매 보존이 훨씬 좋음)
+rembg_session = new_session("isnet-general-use")
 def remove_background(image_path: str, output_folder: str = "output"):
     """
     rembg를 사용하여 이미지의 배경을 제거하고 결과를 저장합니다.
@@ -28,7 +30,14 @@ def remove_background(image_path: str, output_folder: str = "output"):
     input_image = Image.open(input_path)
 
     # 배경 제거
-    output_image = remove(input_image)
+    output_image = remove(
+        input_image,
+        session=rembg_session,
+        alpha_matting=True,
+        alpha_matting_foreground_threshold=220,
+        alpha_matting_background_threshold=15,
+        alpha_matting_erode_size=5,
+    )
 
     # RGBA로 변환
     if output_image.mode != "RGBA":

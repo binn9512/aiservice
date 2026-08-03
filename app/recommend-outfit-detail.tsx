@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -16,12 +17,16 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import ItemDetailModal from '../src/components/modal/ItemDetailModal';
 import { OutfitItem } from '../src/types/outfit';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+
 
 type Outfit = {
   id: string;
   modelImage: any;
   items: OutfitItem[];
 };
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 export default function RecommendOutfitDetailScreen() {
   const router = useRouter();
@@ -52,6 +57,12 @@ export default function RecommendOutfitDetailScreen() {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [lookbookTitle, setLookbookTitle] = useState('');
   const [lookbookMemo, setLookbookMemo] = useState('');
+  const [collections, setCollections] = useState<any[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
+  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
+
+  const [showCreateInput, setShowCreateInput] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
 
   useEffect(() => {
     const loadFaceImage = async () => {
@@ -63,28 +74,81 @@ export default function RecommendOutfitDetailScreen() {
     loadFaceImage();
   }, []);
 
+  const loadCollections = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/get-collections`
+      );
+
+      if (res.data.success) {
+        setCollections(res.data.collections);
+      }
+
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const createCollection = async () => {
+    if (!newCollectionName.trim()) return;
+
+    try {
+      const res = await 
+      axios.post(
+        `${API_BASE_URL}/create-collection`,
+        {
+          name: newCollectionName,
+        }
+      );
+
+      if (res.data.success) {
+
+        // 목록 다시 불러오기
+        await loadCollections();
+
+        // 새로 만든 룩북 선택
+        setSelectedCollection(res.data.collection);
+
+        // 드롭다운 닫기
+        setIsCollectionOpen(false);
+
+        // 입력창 닫기
+        setShowCreateInput(false);
+
+        // 입력값 초기화
+        setNewCollectionName('');
+      }
+
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const saveLookbook = async () => {
+    if (!selectedCollection) {
+      alert('룩북을 선택해주세요.');
+      return;
+    }
+
     try {
       const today = new Date();
 
-      const lookbook = {
-        id: Date.now().toString(),
-        title: lookbookTitle || '새 룩북',
-        memo: lookbookMemo,
-        date: `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`,
-        outfitImage: current.modelImage,
-        items: current.items,
-      };
+      await axios.post(
+        `${API_BASE_URL}/save-outfit`,
+        {
+          collection_id: selectedCollection.id,
 
-      const saved = await AsyncStorage.getItem('LOOKBOOKS');
+          title:
+            lookbookTitle.trim() ||
+            new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').replace('.', ''),
 
-      const lookbooks = saved ? JSON.parse(saved) : [];
+          memo: lookbookMemo,
 
-      lookbooks.unshift(lookbook);
-
-      await AsyncStorage.setItem(
-        'LOOKBOOKS',
-        JSON.stringify(lookbooks)
+          images: {
+            modelImage: current.modelImage,
+            items: current.items,
+          },
+        }
       );
 
       setSaveModalVisible(false);
@@ -170,6 +234,7 @@ export default function RecommendOutfitDetailScreen() {
               onPress={() => {
                 setLookbookTitle('');
                 setLookbookMemo('');
+                loadCollections();  
                 setSaveModalVisible(true);
               }}
             >
@@ -237,8 +302,101 @@ export default function RecommendOutfitDetailScreen() {
               룩북 저장
             </Text>
 
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setIsCollectionOpen(!isCollectionOpen)}
+            >
+              <Text style={styles.dropdownText}>
+                {selectedCollection
+                  ? selectedCollection.name
+                  : '룩북 선택'}
+              </Text>
+
+              <Ionicons
+                name={isCollectionOpen ? "chevron-up" : "chevron-down"}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+
+            {isCollectionOpen && (
+              <ScrollView
+                style={styles.collectionList}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
+
+                <TouchableOpacity
+                  style={styles.collectionItem}
+                  onPress={() => {
+                    setShowCreateInput(!showCreateInput);
+                  }}
+                >
+                  <Text style={styles.addCollectionText}>
+                    ➕ 새 룩북 만들기
+                  </Text>
+                </TouchableOpacity>
+
+                {showCreateInput && (
+                  <View style={styles.createInputContainer}>
+
+                    <TextInput
+                      placeholder="새 룩북 이름"
+                      value={newCollectionName}
+                      onChangeText={setNewCollectionName}
+                      style={styles.createInput}
+                    />
+
+                    <TouchableOpacity
+                      style={styles.createCircleButton}
+                      onPress={createCollection}
+                    >
+                      <Ionicons
+                        name="add"
+                        size={22}
+                        color="#fff"
+                      />
+                    </TouchableOpacity>
+
+                  </View>
+                )}
+
+                {collections.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.collectionItem}
+                    onPress={() => {
+                      setSelectedCollection(item);
+                      setIsCollectionOpen(false);
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={styles.collectionText}>
+                        {item.name}
+                      </Text>
+
+                      {selectedCollection?.id === item.id && (
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color="#FF5C8A"
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+
+              </ScrollView>
+            )}
+
             <TextInput
-              placeholder="룩북 이름"
+              placeholder="코디 이름 (비워두면 오늘 날짜)"
               value={lookbookTitle}
               onChangeText={setLookbookTitle}
               style={styles.modalInput}
@@ -253,7 +411,7 @@ export default function RecommendOutfitDetailScreen() {
             />
 
             <TouchableOpacity
-              style={styles.saveButton}
+              style={styles.createButton}
               onPress={() => {
                 saveLookbook();
               }}
@@ -373,5 +531,129 @@ saveButtonText: {
   color: '#fff',
   fontWeight: '700',
   fontSize: 16,
+},
+
+modalLabel: {
+  fontSize: 15,
+  fontWeight: '600',
+  color: '#666',
+  marginBottom: 10,
+},
+
+
+collectionList: {
+  maxHeight: 220,
+  backgroundColor: '#F7F7F7',
+  borderRadius: 14,
+  marginBottom: 18,
+},
+
+collectionItem: {
+  height: 42,
+  justifyContent: 'center',
+  paddingHorizontal: 18,
+},
+
+addCollectionText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#FF5C8A',
+  paddingTop: 15,
+},
+
+collectionText: {
+  fontSize: 16,
+  color: '#111',
+  fontWeight: '400',
+},
+
+dropdownButton: {
+  height: 52,
+  backgroundColor: '#F7F7F7',
+  borderRadius: 14,
+  paddingHorizontal: 16,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 18,
+},
+
+dropdownText: {
+  fontSize: 16,
+  color: '#666',
+},
+
+createModalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.35)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+createModal: {
+  width: '85%',
+  backgroundColor: '#fff',
+  borderRadius: 20,
+  padding: 20,
+},
+
+createTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  marginBottom: 18,
+},
+
+createButton: {
+  height: 44,
+  paddingHorizontal: 20,
+  borderRadius: 12,
+  backgroundColor: '#FF5C8A',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+createButtonRow: {
+  flexDirection: 'row',
+  justifyContent: 'flex-end',
+  marginTop: 18,
+},
+
+cancelButton: {
+  height: 44,
+  paddingHorizontal: 20,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E6E6E6',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 10,
+},
+
+createInputContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  paddingBottom: 8,
+},
+
+createInput: {
+  flex: 1,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#EAEAEA',
+  paddingHorizontal: 14,
+},
+
+createCircleButton: {
+  width: 40,
+  height: 40,
+  borderRadius: 21,
+  backgroundColor: '#FF5C8A',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginLeft: 10,
 },
 });
