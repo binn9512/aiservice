@@ -23,6 +23,7 @@ type ExtendedOutfitItem = OutfitItem & {
   price?: number;
   img_url?: string;
   image_url?: string;
+  no_bg_url?: string;
 };
 
 type Props = {
@@ -90,17 +91,15 @@ const OutfitCard = ({
                 isShop && { borderColor: '#333333', backgroundColor: '#FAFAFA' }
               ]}
               onPress={() => {
-                if (isShop && hasValidLink) {
-                  Linking.openURL(rawLink);
-                } else if (onItemPress) {
-                  onItemPress(item);
+                if (onItemPress) {
+                  onItemPress(item); // 무신사 옷이든 내 옷장 옷이든 기존 모달로 넘겨줌!
                 }
               }}>
               {/* 🌟 옷 이미지 렌더링 영역 */}
               <Image
                 source={(() => {
-                  // 1. 후보 키에서 이미지 주소 추출
-                  let imgUri = item?.img_url || item?.image_url || (typeof item?.image === 'string' ? item.image : undefined);
+                  // 1. 후보 키에서 이미지 주소 추출 (누끼 이미지 no_bg_url을 1순위로 탐색!)
+                  let imgUri = item?.no_bg_url || item?.img_url || item?.image_url || (typeof item?.image === 'string' ? item.image : undefined);
 
                   if (imgUri && typeof imgUri === 'string') {
                     // 역슬래시(\) -> 웹 슬래시(/) 변환

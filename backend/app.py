@@ -417,15 +417,26 @@ def get_musinsa_item_by_id(musinsa_id):
 
         clean_musinsa_id = str(musinsa_id).replace("SHOP_", "").replace("ID:", "").strip()
 
+        # 🌟 DB 테이블에 실제 정의된 컬럼 순서대로 일치시킵니다.
+        # row[0]: musinsa_id
+        # row[1]: name
+        # row[2]: category
+        # row[3]: style
+        # row[4]: color
+        # row[5]: price
+        # row[6]: img_url
+        # row[7]: no_bg_url
+        # row[8]: product_url
         cursor.execute("""
             SELECT musinsa_id,
+                   name,
                    category,
                    style,
                    color,
+                   price,
                    img_url,
-                   name,
-                   product_url,
-                   price
+                   no_bg_url,
+                   product_url
             FROM musinsa_clothes
             WHERE musinsa_id = ? OR musinsa_id = ?
         """, (clean_musinsa_id, f"SHOP_{clean_musinsa_id}"))
@@ -433,36 +444,61 @@ def get_musinsa_item_by_id(musinsa_id):
         row = cursor.fetchone()
         conn.close()
 
-        # 🔍 DB에서 실제 읽어온 데이터 원본 터미널에 출력하기!
         print(f"🔍 [무신사 DB Raw Row ({clean_musinsa_id})]:", row)
 
         if not row:
             return None
 
-        # row[4]가 img_url 위치입니다.
-        img_link = row[4] if len(row) > 4 else None
-        if img_link:
-            img_link = str(img_link).replace("\\", "/").strip()
+        # 1. 각 필드를 정확한 인덱스로 매칭
+        m_id = row[0]
+        name = row[1]
+        category = row[2]
+        style = row[3]
+        color = row[4]
+        price = row[5] or 0
+        
+        # 2. 원본 이미지 URL (row[6])
+        raw_img_link = str(row[6]).replace("\\", "/").strip() if row[6] else None
 
-        buy_link = row[6] if len(row) > 6 else None
+        # 3. 누끼 이미지 파일 경로 (row[7])
+        no_bg_file = row[7]
+        no_bg_link = None
+
+        if no_bg_file:
+            no_bg_clean = str(no_bg_file).replace("\\", "/").strip()
+            if not no_bg_clean.startswith("http"):
+                if not no_bg_clean.startswith("/"):
+                    no_bg_clean = "/" + no_bg_clean
+                server_base = globals().get('SERVER_URL', 'http://172.20.10.3:5001') # 서버 IP
+                no_bg_link = f"{server_base}{no_bg_clean}"
+            else:
+                no_bg_link = no_bg_clean
+
+        # 4. 앱 대표 표출 이미지 (누끼 이미지 최우선 적용)
+        final_img = no_bg_link if no_bg_link else raw_img_link
+
+        # 5. 구매 링크 (row[8])
+        buy_link = str(row[8]).strip() if row[8] else None
 
         return {
-            "id": f"SHOP_{row[0]}",
-            "category": row[1],
-            "style": row[2],
-            "color": row[3],
-            "img_url": img_link,
-            "image": img_link,
-            "name": row[5],
-            "product_url": buy_link,
+            "id": f"SHOP_{m_id}",
+            "name": name,
+            "category": category,
+            "style": style,
+            "color": color,
+            "price": price,
+            "img_url": raw_img_link,     # 원본 URL
+            "no_bg_url": no_bg_link,     # 누끼 이미지 풀 URL (http://...)
+            "image": final_img,          # 프론트 표출 대표 이미지
+            "product_url": buy_link,     # 무신사 구매 링크
             "buy_url": buy_link,
-            "price": row[7] if len(row) > 7 else 0,
             "is_shop": True
         }
 
     except Exception as e:
         print(f"❌ 무신사 옷 정보 조회 오류: {e}")
         return None
+
 # ID가 MY_인지 SHOP_인지 판별하여 맞춤 조회를 해주는 통합 함수
 def get_any_item_info(item_code):
     if not item_code or item_code == "null" or item_code == "":
@@ -526,25 +562,33 @@ def chat_api():
         outfit_image = get_demo_outfit_image(ai_json)
         
         # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
+       # 이미지 주소 추출 보조 도구 (누끼 이미지 no_bg_url 1순위 적용)
         def resolve_image_url(info):
             if not info:
                 return None
             
-            # 무신사는 img_url, 내 옷장은 image/image_url 필드 참조
-            image_val = info.get("img_url") or info.get("image") or info.get("image_url")
+            # 🌟 1순위: no_bg_url 최우선 탐색! (없을 때만 image, img_url 순으로 탐색)
+            image_val = info.get("no_bg_url") or info.get("image") or info.get("img_url") or info.get("image_url")
             if not image_val:
                 return None
 
-            image_str = str(image_val).replace("\\", "/")  # 윈도우 역슬래시(\) -> 웹 슬래시(/) 변환
+            image_str = str(image_val).replace("\\", "/").strip()  # 역슬래시(\) -> 웹 슬래시(/) 변환
 
-            # 무신사 이미지 (http/https로 시작하는 경우)
+            # http/https로 시작하는 풀 URL인 경우 (no_bg_url 또는 무신사 원본)
             if image_str.startswith("http"):
                 return image_str
             
+            # 상대 경로(/static/output/...)인 경우 서버 호스팅 주소 붙이기
+            if image_str.startswith("/static") or image_str.startswith("/output"):
+                server_base = globals().get('SERVER_URL', 'http://172.20.10.3:5001')
+                if not image_str.startswith("/"):
+                    image_str = "/" + image_str
+                return f"{server_base}{image_str}"
+
             # 내 옷장 이미지 (상대 경로인 경우 호스팅 경로 처리)
             return get_image_path_by_id(extract_id(info.get("id")))
 
-        # 프론트엔드가 image, img_url 어떤 필드로 읽어도 다 뜨도록 items 객체 내부 정제
+        # 프론트엔드가 image, img_url, no_bg_url 어떤 필드로 읽어도 누끼가 뜨도록 정제
         all_items = {
             "top": top_info,
             "bottom": bottom_info,
@@ -557,15 +601,20 @@ def chat_api():
 
         for cat, item in all_items.items():
             if item and isinstance(item, dict):
+                # 🌟 누끼 URL 최우선 적용
                 final_url = resolve_image_url(item)
+                
                 item["image"] = final_url
-                item["img_url"] = final_url
+                item["no_bg_url"] = final_url  # 프론트에 no_bg_url 키 보존
 
-                # 무신사 구매 링크 키 통일
+                # 무신사 구매 링크 키 통일 (nan 방지)
                 raw_link = item.get("product_url") or item.get("buy_url")
-                if raw_link:
+                if raw_link and str(raw_link) != "nan":
                     item["buy_url"] = raw_link
                     item["product_url"] = raw_link
+                else:
+                    item["buy_url"] = None
+                    item["product_url"] = None
 
         # 프론트엔드로 반환할 최종 데이터
         return jsonify({
@@ -596,7 +645,6 @@ def chat_api():
             "images": {},
             "items": {}
         })
-
 # =========================================================================
 # 👗 5. 옷장(Closet) 및 코디 저장 관리 API
 # =========================================================================
