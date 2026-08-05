@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -163,8 +164,14 @@ export default function LookbookOutfitDetailScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.saveModal}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setEditVisible(false)}
+          >
+            <Pressable
+              style={styles.saveModal}
+              onPress={(e) => e.stopPropagation()}
+            >
 
               <Text style={styles.modalTitle}>
                 룩북 수정
@@ -194,8 +201,8 @@ export default function LookbookOutfitDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
-            </View>
-          </View>
+            </Pressable>
+          </Pressable>
         </KeyboardAvoidingView>
       </Modal>
 

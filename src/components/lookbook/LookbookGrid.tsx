@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
+
 import {
   View,
   Text,
@@ -17,7 +22,7 @@ import axios from 'axios';
 
 import LookbookCard from './LookbookCard';
 
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
@@ -86,9 +91,17 @@ export default function LookbookGrid({ isEditMode }: any) {
     );
   };
 
-  useEffect(() => {
-    loadLookbooks();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadLookbooks();
+    }, [])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadLookbooks();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
@@ -97,7 +110,11 @@ export default function LookbookGrid({ isEditMode }: any) {
           {lookbooks.length - 1}개의 룩북
         </Text>
 
-        <TouchableOpacity>
+        <TouchableOpacity
+          onPress={() =>
+            router.push('/lookbook-order')
+          }
+        >
           <Text style={styles.topText}>
             순서 편집
           </Text>

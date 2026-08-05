@@ -770,9 +770,14 @@ def get_collections():
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT collection_id, collection_name, created_at
+            SELECT
+                collection_id,
+                collection_name,
+                created_at,
+                display_order
             FROM collections
             WHERE user_id = ?
+            ORDER BY display_order
         """, ("su_ryong",))
 
         rows = cursor.fetchall()
@@ -822,14 +827,24 @@ def create_collection():
         cursor = conn.cursor()
 
         cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0) + 1
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        next_order = cursor.fetchone()[0]
+
+        cursor.execute("""
             INSERT INTO collections (
                 user_id,
-                collection_name
+                collection_name,
+                display_order
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?)
         """, (
             user_id,
-            collection_name
+            collection_name,
+            next_order
         ))
 
         collection_id = cursor.lastrowid
@@ -1030,6 +1045,38 @@ def delete_collection(collection_id):
         return jsonify({
             "success": True,
             "message": "콜렉션이 삭제되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 순서 저장 API
+@app.route('/update-collection-order', methods=['POST'])
+def update_collection_order():
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        for item in data["collections"]:
+            cursor.execute("""
+                UPDATE collections
+                SET display_order = ?
+                WHERE collection_id = ?
+            """, (
+                item["order"],
+                item["id"],
+            ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
         })
 
     except Exception as e:

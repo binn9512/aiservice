@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -363,8 +364,17 @@ export default function RecommendOutfitDetailScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.saveModal}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => {
+              setSaveModalVisible(false);
+              setIsCollectionOpen(false);
+            }}
+          >
+            <Pressable
+              style={styles.saveModal}
+              onPress={(e) => e.stopPropagation()}
+            >
 
             <Text style={styles.modalTitle}>
               룩북 저장
@@ -488,10 +498,9 @@ export default function RecommendOutfitDetailScreen() {
                 저장
               </Text>
             </TouchableOpacity>
-
-          </View>
-        </View>
-        </KeyboardAvoidingView>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -582,7 +591,8 @@ memoInput: {
   borderColor: '#E5E5E5',
   borderRadius: 12,
   padding: 16,
-  height: 100,
+  height: 80,
+  marginBottom: 16,
   textAlignVertical: 'top',
 },
 
