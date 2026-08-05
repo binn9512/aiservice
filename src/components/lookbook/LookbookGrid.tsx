@@ -9,6 +9,8 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  TouchableOpacity,
 } from 'react-native';
 
 import axios from 'axios';
@@ -19,8 +21,7 @@ import { useRouter } from 'expo-router';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
-
-export default function LookbookGrid() {
+export default function LookbookGrid({ isEditMode }: any) {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const [lookbookName, setLookbookName] = useState('');
@@ -30,6 +31,7 @@ export default function LookbookGrid() {
       type: 'add',
     },
   ]);
+
 
   const loadLookbooks = async () => {
     try {
@@ -56,12 +58,52 @@ export default function LookbookGrid() {
     }
   };
 
+  const deleteCollection = (item: any) => {
+    Alert.alert(
+      '룩북 삭제',
+      `"${item.title}" 룩북을 삭제하시겠습니까?\n저장된 코디도 함께 삭제됩니다.`,
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.delete(
+                `${API_BASE_URL}/collection/${item.id}`
+              );
+
+              await loadLookbooks();
+            } catch (e) {
+              console.log(e);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     loadLookbooks();
   }, []);
 
   return (
     <View style={styles.container}>
+      <View style={styles.topRow}>
+        <Text style={styles.topText}>
+          {lookbooks.length - 1}개의 룩북
+        </Text>
+
+        <TouchableOpacity>
+          <Text style={styles.topText}>
+            순서 편집
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
       <FlatList
         data={lookbooks}
         keyExtractor={item => item.id}
@@ -70,6 +112,8 @@ export default function LookbookGrid() {
         renderItem={({ item }) => (
           <LookbookCard
             item={item}
+            isEditMode={isEditMode}
+            onDelete={deleteCollection}
             onPress={() => {
               if (item.type === 'add') {
                 setModalVisible(true);
@@ -162,10 +206,23 @@ export default function LookbookGrid() {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  topText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666666',
+  },
+
   container: {
     paddingHorizontal: 20,
-    paddingTop: 15,
   },
+
   row: {
     justifyContent: 'space-between',
     marginBottom: 16,

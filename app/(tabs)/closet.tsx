@@ -272,18 +272,34 @@ const ClosetScreen = () => {
           )}
 
           <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => {
-                setIsSearching(!isSearching);
-                if (isSearching) setSearchText('');
-              }}>
-              <Ionicons name={isSearching ? 'close' : 'search-outline'} size={24} color="#111111" />
-            </TouchableOpacity>
+            {selectedTab === '옷' && (
+              <>
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => {
+                    setIsSearching(!isSearching);
+                    if (isSearching) setSearchText('');
+                  }}
+                >
+                  <Ionicons
+                    name={isSearching ? 'close' : 'search-outline'}
+                    size={24}
+                    color="#111111"
+                  />
+                </TouchableOpacity>
 
-            <TouchableOpacity style={styles.iconButton} onPress={() => setIsEditMode(!isEditMode)}>
-              <Ionicons name="trash-outline" size={24} color={isEditMode ? '#FF5C8A' : '#111111'} />
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => setIsEditMode(!isEditMode)}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={24}
+                    color={isEditMode ? '#FF5C8A' : '#111111'}
+                  />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 

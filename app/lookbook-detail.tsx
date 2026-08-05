@@ -78,7 +78,7 @@ export default function LookbookDetailPage() {
           name="shirt-outline"
           size={46}
           color="#BDBDBD"
-          style={{ alignSelf: 'center', marginTop: '45%' }}
+          style={{ alignSelf: 'center', marginTop: '50%' }}
         />
       </View>
 
@@ -150,13 +150,13 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: '700',
     color: '#111111',
   },
 
   count: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111111',
     marginHorizontal: 20,
