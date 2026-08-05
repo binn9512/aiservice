@@ -23,6 +23,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 // 2️⃣ 엑스포 내장 아이콘 사용
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+import axios from 'axios';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 const categories = [
@@ -52,6 +54,7 @@ const ClosetScreen = () => {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -173,6 +176,46 @@ const ClosetScreen = () => {
     }
   }
 
+  const deleteSelectedClothes = async () => {
+    if (selectedIds.length === 0) {
+      Alert.alert('삭제할 옷을 선택해주세요.');
+      return;
+    }
+
+    Alert.alert(
+      '옷 삭제',
+      `${selectedIds.length}개의 옷을 삭제하시겠습니까?`,
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.post(
+                `${API_BASE_URL}/delete-clothes`,
+                {
+                  ids: selectedIds,
+                }
+              );
+
+              setSelectedIds([]);
+              setIsEditMode(false);
+
+              await loadClosetItems();
+
+            } catch (e) {
+              console.log(e);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const filteredData =
     selectedCategory === '전체'
       ? clothesData
@@ -227,24 +270,48 @@ const ClosetScreen = () => {
         activeOpacity={0.8}
         style={styles.itemCard}
         onPress={() => {
-          // 4️⃣ 화면 이동 시 객체 데이터를 JSON 문자열로 변환하여 전달
+
+          if (isEditMode) {
+
+            if (selectedIds.includes(item.id)) {
+              setSelectedIds(prev =>
+                prev.filter(id => id !== item.id)
+              );
+            } else {
+              setSelectedIds(prev => [
+                ...prev,
+                item.id,
+              ]);
+            }
+
+            return;
+          }
+
           router.push({
             pathname: '/clothing-detail',
-            params: { item: JSON.stringify(item) },
+            params: {
+              item: JSON.stringify(item),
+            },
           });
+
         }}>
         <Image source={{ uri: item.imageUrl || item.image }} style={styles.itemImage} resizeMode="contain" />
         {isEditMode && (
-          <TouchableOpacity
-            style={styles.deleteBadge}
-            onPress={() =>
-              Alert.alert('옷 삭제', '이 옷을 삭제할까요?', [
-                { text: '취소', style: 'cancel' },
-                { text: '삭제', style: 'destructive', onPress: () => deleteClothes(item.id) },
-              ])
-            }>
-            <Ionicons name="close" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.checkCircle}>
+            <Ionicons
+              name={
+                selectedIds.includes(item.id)
+                  ? 'checkmark-circle'
+                  : 'ellipse-outline'
+              }
+              size={24}
+              color={
+                selectedIds.includes(item.id)
+                  ? '#FF5C8A'
+                  : '#C9C9C9'
+              }
+            />
+          </View>
         )}
       </TouchableOpacity>
     );
@@ -419,6 +486,41 @@ const ClosetScreen = () => {
           <LookbookGrid />
         )}
       </ScrollView>
+
+      {isEditMode && (
+                <View style={styles.deleteBar}>
+
+                  <Text style={styles.selectedText}>
+                    {selectedIds.length}개 선택됨
+                  </Text>
+
+                  <View style={styles.deleteButtons}>
+
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => {
+                        setIsEditMode(false);
+                        setSelectedIds([]);
+                      }}
+                    >
+                      <Text style={styles.cancelButtonText}>
+                        취소
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.bottomDeleteButton}
+                      onPress={deleteSelectedClothes}
+                    >
+                      <Text style={styles.bottomDeleteButtonText}>
+                        삭제
+                      </Text>
+                    </TouchableOpacity>
+
+                  </View>
+
+                </View>
+              )}
     </SafeAreaView>
   );
 };
@@ -455,12 +557,63 @@ const styles = StyleSheet.create({
   sortText: { fontSize: 13, fontWeight: '600', color: '#444444' },
   deleteButton: { backgroundColor: '#FFE3EE', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   deleteButtonText: { color: '#FF5C8A', fontSize: 13, fontWeight: '700' },
-  deleteBadge: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FF5C8A', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  checkCircle: {position: 'absolute', top: 8, right: 8, zIndex: 10,},
   searchHeaderInput: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111111', marginRight: 10 },
   topTabContainer: {flexDirection: 'row', justifyContent: 'center', marginBottom: 16,},
   topTabButton: { alignItems: 'center', paddingHorizontal: 28 }, 
   topTabText: { fontSize: 17, fontWeight: '500', color: '#999999' }, 
   activeTopTabText: { color: '#111111', fontWeight: '700' }, 
   activeLine: { marginTop: 8, width: '100%', height: 3, backgroundColor: '#FF5C8A', borderRadius: 2 },
+  deleteBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 75,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#ECECEC',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
 
+  selectedText: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 12,
+  },
+
+  deleteButtons: {
+    flexDirection: 'row',
+  },
+
+  cancelButton: {
+    width: 90,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  cancelButtonText: {
+    color: '#666',
+    fontWeight: '600',
+  },
+
+  bottomDeleteButton: {
+    flex: 1,
+    height: 48,
+    marginLeft: 10,
+    borderRadius: 14,
+    backgroundColor: '#FF5C8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  bottomDeleteButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });

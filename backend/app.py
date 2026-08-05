@@ -921,7 +921,6 @@ def get_collection_outfits(collection_id):
             outfit_json
         FROM saved_outfits
         WHERE collection_id = ?
-        ORDER BY saved_id DESC
         """, (collection_id,))
 
         rows = cursor.fetchall()
@@ -1071,6 +1070,116 @@ def update_collection_order():
                 item["order"],
                 item["id"],
             ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 콜렉션 이름 수정 API
+@app.route('/collection/<int:collection_id>', methods=['PUT'])
+def update_collection(collection_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE collections
+            SET collection_name = ?
+            WHERE collection_id = ?
+        """, (
+            data.get("name"),
+            collection_id,
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 코디 삭제 API
+@app.route('/delete-saved-outfits', methods=['POST'])
+def delete_saved_outfits():
+    data = request.json
+
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM saved_outfits
+            WHERE saved_id IN ({placeholders})
+            """,
+            ids,
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 옷 삭제 API
+@app.route('/delete-clothes', methods=['POST'])
+def delete_multiple_clothes():
+    data = request.json
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM clothes
+            WHERE clothes_id IN ({placeholders})
+            """,
+            ids
+        )
 
         conn.commit()
         conn.close()
