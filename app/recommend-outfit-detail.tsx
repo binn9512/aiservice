@@ -627,6 +627,7 @@ addCollectionText: {
   fontWeight: '600',
   color: '#FF5C8A',
   paddingTop: 15,
+  paddingBottom: 15,
 },
 
 collectionText: {

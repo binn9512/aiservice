@@ -973,6 +973,38 @@ def delete_saved_outfit(saved_id):
             "error": str(e)
         }), 500
 
+# 저장된 코디 하나를 수정하는 API
+@app.route('/saved-outfit/<int:saved_id>', methods=['PUT'])
+def update_saved_outfit(saved_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE saved_outfits
+            SET title = ?, memo = ?
+            WHERE saved_id = ?
+        """, (
+            data.get("title"),
+            data.get("memo"),
+            saved_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 # 콜렉션(폴더) 하나를 삭제하는 API
 @app.route('/collection/<int:collection_id>', methods=['DELETE'])
 def delete_collection(collection_id):
@@ -1005,6 +1037,9 @@ def delete_collection(collection_id):
             "success": False,
             "error": str(e)
         }), 500
+
+
+
 
 
 # =========================================================================

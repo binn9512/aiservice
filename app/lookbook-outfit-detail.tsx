@@ -6,6 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,6 +23,9 @@ export default function LookbookOutfitDetailScreen() {
   const { collectionId, savedId } = useLocalSearchParams();
 
   const [current, setCurrent] = useState<any>(null);
+  const [editVisible, setEditVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editMemo, setEditMemo] = useState('');
 
   useEffect(() => {
     loadOutfit();
@@ -44,6 +52,88 @@ export default function LookbookOutfitDetailScreen() {
     }
   };
 
+  const showMenu = () => {
+    Alert.alert(
+      '코디 관리',
+      '',
+      [
+        {
+          text: '수정',
+          onPress: () => {
+            setEditTitle(current.title);
+            setEditMemo(current.memo || '');
+            setEditVisible(true);
+          },
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: deleteOutfit,
+        },
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const deleteOutfit = () => {
+    Alert.alert(
+      '코디 삭제',
+      '이 코디를 삭제하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.delete(
+                `${API_BASE_URL}/saved-outfit/${savedId}`
+              );
+
+              Alert.alert('삭제되었습니다.');
+
+              router.back();
+            } catch (e) {
+              console.log(e);
+              Alert.alert('삭제에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const updateOutfit = async () => {
+    try {
+      await axios.put(
+        `${API_BASE_URL}/saved-outfit/${savedId}`,
+        {
+          title: editTitle,
+          memo: editMemo,
+        }
+      );
+
+      setCurrent({
+        ...current,
+        title: editTitle,
+        memo: editMemo,
+      });
+
+      setEditVisible(false);
+
+      Alert.alert('수정되었습니다.');
+    } catch (e) {
+      console.log(e);
+      Alert.alert('수정 실패');
+    }
+  };
+
   const items = useMemo(() => {
     if (!current) return [];
 
@@ -63,6 +153,52 @@ export default function LookbookOutfitDetailScreen() {
   items.length > 0 ? (items[0] as any).image : undefined;
 
   return (
+    <>
+      <Modal
+        visible={editVisible}
+        animationType="slide"
+        transparent
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.saveModal}>
+
+              <Text style={styles.modalTitle}>
+                룩북 수정
+              </Text>
+
+              <TextInput
+                placeholder="코디 이름"
+                value={editTitle}
+                onChangeText={setEditTitle}
+                style={styles.modalInput}
+              />
+
+              <TextInput
+                placeholder="메모"
+                value={editMemo}
+                onChangeText={setEditMemo}
+                multiline
+                style={styles.memoInput}
+              />
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={updateOutfit}
+              >
+                <Text style={styles.saveButtonText}>
+                  수정 완료
+                </Text>
+              </TouchableOpacity>
+
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
@@ -80,7 +216,7 @@ export default function LookbookOutfitDetailScreen() {
           {current.title}
         </Text>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={showMenu}>
           <Ionicons
             name="ellipsis-horizontal"
             size={22}
@@ -142,12 +278,13 @@ export default function LookbookOutfitDetailScreen() {
 
         <TouchableOpacity style={styles.retryButton}>
           <Text style={styles.retryText}>
-            이 코디 다시 추천받기
+            비슷한 코디 다시 추천받기
           </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
-  );
+  </>
+);
 }
 
 const styles = StyleSheet.create({
@@ -157,7 +294,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 58,
+    paddingTop: 65,
     paddingHorizontal: 20,
     paddingBottom: 18,
     flexDirection: 'row',
@@ -270,5 +407,57 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+
+  saveModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 16,
+  },
+
+  memoInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    padding: 16,
+    height: 100,
+    textAlignVertical: 'top',
+  },
+
+  saveButton: {
+    marginTop: 24,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#FF5C8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

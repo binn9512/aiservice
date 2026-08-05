@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
+
 import {
   SafeAreaView,
   View,
@@ -11,9 +16,11 @@ import {
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import axios from 'axios';
+
 import {
   useRouter,
   useLocalSearchParams,
+  useFocusEffect,
 } from 'expo-router';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
@@ -44,11 +51,13 @@ export default function LookbookDetailPage() {
     }
   };
 
-  useEffect(() => {
-    if (collectionId) {
-      loadOutfits();
-    }
-  }, [collectionId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (collectionId) {
+        loadOutfits();
+      }
+    }, [collectionId])
+  );
 
   const renderItem = ({ item }: any) => (
     <TouchableOpacity
@@ -73,8 +82,11 @@ export default function LookbookDetailPage() {
         />
       </View>
 
-      <Text style={styles.date}>
-        저장된 코디
+      <Text
+        style={styles.cardTitle}
+        numberOfLines={1}
+      >
+        {item.title || '제목 없음'}
       </Text>
     </TouchableOpacity>
   );
@@ -179,4 +191,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  cardTitle: {
+  marginTop: 10,
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#111111',
+  marginHorizontal: 4,
+},
 });
