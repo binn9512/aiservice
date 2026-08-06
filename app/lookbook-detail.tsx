@@ -51,13 +51,25 @@ export default function LookbookDetailPage() {
 
   const loadOutfits = async () => {
     try {
+      let targetCollectionId = collectionId;
+
+      // 즐겨찾기면 실제 collection_id 조회
+      if (collectionId === 'favorite') {
+        const favoriteRes = await axios.get(
+          `${API_BASE_URL}/favorite-collection`
+        );
+
+        targetCollectionId = favoriteRes.data.collection_id;
+      }
+
       const res = await axios.get(
-        `${API_BASE_URL}/collection/${collectionId}`
+        `${API_BASE_URL}/collection/${targetCollectionId}`
       );
 
       if (res.data.success) {
         setOutfits(res.data.outfits);
       }
+
     } catch (e) {
       console.log(e);
     }
@@ -147,8 +159,12 @@ export default function LookbookDetailPage() {
     }
 
     Alert.alert(
-      '삭제',
-      `${selectedIds.length}개의 코디를 삭제하시겠습니까?`,
+      collectionId === 'favorite'
+        ? '좋아요 취소'
+        : '삭제',
+      collectionId === 'favorite'
+        ? `${selectedIds.length}개의 코디의 좋아요를 취소하시겠습니까?`
+        : `${selectedIds.length}개의 코디를 삭제하시겠습니까?`,
       [
         {
           text: '취소',
@@ -160,7 +176,9 @@ export default function LookbookDetailPage() {
           onPress: async () => {
             try {
               await axios.post(
-                `${API_BASE_URL}/delete-saved-outfits`,
+                collectionId === 'favorite'
+                  ? `${API_BASE_URL}/unfavorite-outfits`
+                  : `${API_BASE_URL}/delete-saved-outfits`,
                 {
                   ids: selectedIds,
                 }
@@ -285,13 +303,17 @@ export default function LookbookDetailPage() {
           {title}
         </Text>
 
-        <TouchableOpacity onPress={showMenu}>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={24}
-            color="#111"
-          />
-        </TouchableOpacity>
+        {collectionId !== 'favorite' ? (
+          <TouchableOpacity onPress={showMenu}>
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={24}
+              color="#111"
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
 
       </View>
 

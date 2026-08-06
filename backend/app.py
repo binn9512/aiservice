@@ -905,6 +905,75 @@ def save_outfit():
     except Exception as e:
         return jsonify({"success": False, "message": f"저장 실패 ㅠㅠ 에러: {e}"}), 500
 
+# 즐겨찾기 룩북 조회(없으면 자동 생성)
+@app.route('/favorite-collection', methods=['GET'])
+def favorite_collection():
+
+    user_id = "su_ryong"
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        # 이미 즐겨찾기 룩북이 있는지 확인
+        cursor.execute("""
+            SELECT collection_id
+            FROM collections
+            WHERE user_id = ?
+            AND collection_name = ?
+        """, (
+            user_id,
+            "즐겨찾기",
+        ))
+
+        row = cursor.fetchone()
+
+        if row:
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "collection_id": row[0]
+            })
+
+        # 없으면 새로 생성
+        cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0)
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        display_order = cursor.fetchone()[0] + 1
+
+        cursor.execute("""
+            INSERT INTO collections(
+                user_id,
+                collection_name,
+                display_order
+            )
+            VALUES (?, ?, ?)
+        """, (
+            user_id,
+            "즐겨찾기",
+            display_order,
+        ))
+
+        collection_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "collection_id": collection_id
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 # 사용자가 선택한 콜렉션 안의 저장된 코디 목록 조회 API
 @app.route('/collection/<int:collection_id>', methods=['GET'])
 def get_collection_outfits(collection_id):

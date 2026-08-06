@@ -30,6 +30,32 @@ export default function LookbookCard({ item, onPress }: any) {  if (item.type ==
     );
   }
 
+  if (item.type === 'favorite') {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.card}
+        onPress={onPress}
+      >
+        <View style={styles.favoritePreview}>
+          <Ionicons
+            name="heart-outline"
+            size={56}
+            color="#D6D6D6"
+          />
+        </View>
+
+        <Text style={styles.favoriteTitle}>
+          즐겨찾기
+        </Text>
+
+        <Text style={styles.favoriteCount}>
+          좋아요 누른 코디
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -37,7 +63,7 @@ export default function LookbookCard({ item, onPress }: any) {  if (item.type ==
       onPress={onPress}
     >
         <View style={styles.previewGrid}>
-        {item.images.length === 0 ? (
+        {(item.images ?? []).length === 0 ? (
           <View
             style={{
               flex: 1,
@@ -149,5 +175,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FF5C8A',
+  },
+
+  favoritePreview: {
+    height: 150,
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#EAEAEA',
+    backgroundColor: '#FCFCFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  favoriteTitle: {
+    marginTop: 12,
+    marginHorizontal: 14,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#111',
+  },
+
+  favoriteCount: {
+    marginTop: 5,
+    marginHorizontal: 14,
+    fontSize: 13,
+    color: '#8A8A8A',
   },
 });

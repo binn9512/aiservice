@@ -35,6 +35,12 @@ export default function LookbookGrid({ isEditMode }: any) {
       id: 'add',
       type: 'add',
     },
+    {
+      id: 'favorite',
+      type: 'favorite',
+      title: '즐겨찾기',
+      count: 0,
+    },
   ]);
 
 
@@ -50,6 +56,14 @@ export default function LookbookGrid({ isEditMode }: any) {
             id: 'add',
             type: 'add',
           },
+          {
+            id: 'favorite',
+            type: 'favorite',
+            title: '즐겨찾기',
+            count: res.data.favorite_count ?? 0,
+            images: [],
+          },
+
           ...res.data.collections.map((item: any) => ({
             id: String(item.id),
             title: item.name,
@@ -129,12 +143,28 @@ export default function LookbookGrid({ isEditMode }: any) {
         renderItem={({ item }) => (
           <LookbookCard
             item={item}
-            isEditMode={isEditMode}
+            isEditMode={
+              isEditMode &&
+              item.type !== 'favorite'
+            }
             onDelete={deleteCollection}
             onPress={() => {
               if (item.type === 'add') {
+
                 setModalVisible(true);
+
+              } else if (item.type === 'favorite') {
+
+                router.push({
+                  pathname: '/lookbook-detail',
+                  params: {
+                    collectionId: 'favorite',
+                    title: '즐겨찾기',
+                  },
+                });
+
               } else {
+
                 router.push({
                   pathname: '/lookbook-detail',
                   params: {
@@ -142,6 +172,7 @@ export default function LookbookGrid({ isEditMode }: any) {
                     title: item.title,
                   },
                 });
+
               }
             }}
           />

@@ -25,7 +25,11 @@ export default function LookbookOrderScreen() {
       );
 
       if (res.data.success) {
-        setLookbooks(res.data.collections);
+        setLookbooks(
+          res.data.collections.filter(
+            (item: any) => item.type !== 'favorite'
+          )
+        );
       }
     } catch (e) {
       console.log(e);

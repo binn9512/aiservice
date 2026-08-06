@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -64,6 +65,8 @@ export default function RecommendOutfitDetailScreen() {
 
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
+
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     const loadFaceImage = async () => {
@@ -231,6 +234,82 @@ export default function RecommendOutfitDetailScreen() {
     }
   };
 
+  const saveFavorite = async () => {
+    try {
+
+      const favoriteRes = await axios.get(
+        `${API_BASE_URL}/favorite-collection`
+      );
+
+      const favoriteId = favoriteRes.data.collection_id;
+
+      const top = current.items.find(item =>
+        ['반팔 티셔츠','긴팔 티셔츠','셔츠/블라우스','니트/스웨터','맨투맨/후드','슬리브리스']
+        .includes(item.category)
+      )?.id;
+
+      const bottom = current.items.find(item =>
+        ['데님 팬츠','슬랙스','반바지','트레이닝 팬츠','스커트']
+        .includes(item.category)
+      )?.id;
+
+      const dress = current.items.find(item =>
+        ['원피스'].includes(item.category)
+      )?.id;
+
+      const outer = current.items.find(item =>
+        ['코트','패딩','자켓','가디건','집업']
+        .includes(item.category)
+      )?.id;
+
+      const shoes = current.items.find(item =>
+        ['운동화/스니커즈','구두/로퍼','힐','부츠','샌들/슬리퍼']
+        .includes(item.category)
+      )?.id;
+
+      const bag = current.items.find(item =>
+        ['백팩','숄더백/토트백','크로스백','클러치']
+        .includes(item.category)
+      )?.id;
+
+      const accessory = current.items.find(item =>
+        ['모자','머플러/스카프','벨트','안경/선글라스','주얼리']
+        .includes(item.category)
+      )?.id;
+
+      await axios.post(
+        `${API_BASE_URL}/save-outfit`,
+        {
+          collection_id: favoriteId,
+          title: lookbookTitle.trim() || '새 코디',
+          memo: lookbookMemo,
+          images: {
+            top,
+            bottom,
+            dress,
+            outer,
+            shoes,
+            bag,
+            accessory,
+          },
+        }
+      );
+
+      setSaveModalVisible(false);
+      setLookbookTitle('');
+      setLookbookMemo('');
+      setIsFavorite(false);
+
+      Alert.alert(
+        '완료',
+        '즐겨찾기에 저장되었습니다 ❤️'
+      );
+
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   if (!current) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -307,18 +386,39 @@ export default function RecommendOutfitDetailScreen() {
                 setSaveModalVisible(true);
               }}
             >
-              <Ionicons name="heart-outline" size={20} color="#FF5C8A" />
-              <Text style={styles.actionText}>룩북 저장</Text>
+              <Ionicons
+                name="folder-open-outline"
+                size={20}
+                color="#FF5C8A"
+              />
+              <Text style={styles.actionText}>룩북에 저장</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => {
-                // TODO: 다시 추천
+                setLookbookTitle('');
+                setLookbookMemo('');
+                loadCollections();
+                setSelectedCollection(null);
+                setSaveModalVisible(true);
+                setIsFavorite(true);
               }}
             >
-              <Ionicons name="refresh-outline" size={20} color="#4A4A4A" />
-              <Text style={styles.actionText}>다시 추천</Text>
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={20}
+                color="#FF5C8A"
+              />
+
+              <Text
+                style={[
+                  styles.actionText,
+                  { color: '#050505' }
+                ]}
+              >
+                좋아요
+              </Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.questionTitle}>추천 질문</Text>
@@ -377,100 +477,104 @@ export default function RecommendOutfitDetailScreen() {
             >
 
             <Text style={styles.modalTitle}>
-              룩북 저장
+              {isFavorite ? '즐겨찾기 저장' : '룩북 저장'}
             </Text>
 
-            <TouchableOpacity
-              style={styles.dropdownButton}
-              onPress={() => setIsCollectionOpen(!isCollectionOpen)}
-            >
-              <Text style={styles.dropdownText}>
-                {selectedCollection
-                  ? selectedCollection.name
-                  : '룩북 선택'}
-              </Text>
-
-              <Ionicons
-                name={isCollectionOpen ? "chevron-up" : "chevron-down"}
-                size={20}
-                color="#666"
-              />
-            </TouchableOpacity>
-
-            {isCollectionOpen && (
-              <ScrollView
-                style={styles.collectionList}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-              >
-
+            {!isFavorite && (
+              <>
                 <TouchableOpacity
-                  style={styles.collectionItem}
-                  onPress={() => {
-                    setShowCreateInput(!showCreateInput);
-                  }}
+                  style={styles.dropdownButton}
+                  onPress={() => setIsCollectionOpen(!isCollectionOpen)}
                 >
-                  <Text style={styles.addCollectionText}>
-                    ➕ 새 룩북 만들기
+                  <Text style={styles.dropdownText}>
+                    {selectedCollection
+                      ? selectedCollection.name
+                      : '룩북 선택'}
                   </Text>
+
+                  <Ionicons
+                    name={isCollectionOpen ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color="#666"
+                  />
                 </TouchableOpacity>
 
-                {showCreateInput && (
-                  <View style={styles.createInputContainer}>
-
-                    <TextInput
-                      placeholder="새 룩북 이름"
-                      value={newCollectionName}
-                      onChangeText={setNewCollectionName}
-                      style={styles.createInput}
-                    />
+                {isCollectionOpen && (
+                  <ScrollView
+                    style={styles.collectionList}
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator={false}
+                  >
 
                     <TouchableOpacity
-                      style={styles.createCircleButton}
-                      onPress={createCollection}
-                    >
-                      <Ionicons
-                        name="add"
-                        size={22}
-                        color="#fff"
-                      />
-                    </TouchableOpacity>
-
-                  </View>
-                )}
-
-                {collections.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.collectionItem}
-                    onPress={() => {
-                      setSelectedCollection(item);
-                      setIsCollectionOpen(false);
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                      style={styles.collectionItem}
+                      onPress={() => {
+                        setShowCreateInput(!showCreateInput);
                       }}
                     >
-                      <Text style={styles.collectionText}>
-                        {item.name}
+                      <Text style={styles.addCollectionText}>
+                        ➕ 새 룩북 만들기
                       </Text>
+                    </TouchableOpacity>
 
-                      {selectedCollection?.id === item.id && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color="#FF5C8A"
+                    {showCreateInput && (
+                      <View style={styles.createInputContainer}>
+
+                        <TextInput
+                          placeholder="새 룩북 이름"
+                          value={newCollectionName}
+                          onChangeText={setNewCollectionName}
+                          style={styles.createInput}
                         />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
 
-              </ScrollView>
+                        <TouchableOpacity
+                          style={styles.createCircleButton}
+                          onPress={createCollection}
+                        >
+                          <Ionicons
+                            name="add"
+                            size={22}
+                            color="#fff"
+                          />
+                        </TouchableOpacity>
+
+                      </View>
+                    )}
+
+                    {collections.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.collectionItem}
+                        onPress={() => {
+                          setSelectedCollection(item);
+                          setIsCollectionOpen(false);
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Text style={styles.collectionText}>
+                            {item.name}
+                          </Text>
+
+                          {selectedCollection?.id === item.id && (
+                            <Ionicons
+                              name="checkmark"
+                              size={20}
+                              color="#FF5C8A"
+                            />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+
+                  </ScrollView>
+                )}
+              </>
             )}
 
             <TextInput
@@ -491,7 +595,11 @@ export default function RecommendOutfitDetailScreen() {
             <TouchableOpacity
               style={styles.createButton}
               onPress={() => {
-                saveLookbook();
+                if (isFavorite) {
+                  saveFavorite();
+                } else {
+                  saveLookbook();
+                }
               }}
             >
               <Text style={styles.saveButtonText}>
