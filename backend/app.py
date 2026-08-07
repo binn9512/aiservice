@@ -887,23 +887,27 @@ def save_outfit():
                 collection_id,
                 title,
                 memo,
-                outfit_json
+                outfit_json,
+                is_favorite
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             user_id,
             collection_id,
             title,
             memo,
-            outfit_json
+            outfit_json,
+            1
         ))
+
+        saved_id = cursor.lastrowid
         
         conn.commit()
         conn.close()
         
-        return jsonify({"success": True, "message": "코디가 성공적으로 저장되었습니다! ❤️"})
+        return jsonify({"success": True, "saved_id": saved_id, "message": "코디가 성공적으로 저장되었습니다!"})
     except Exception as e:
-        return jsonify({"success": False, "message": f"저장 실패 ㅠㅠ 에러: {e}"}), 500
+        return jsonify({"success": False, "message": f"저장 실패. 에러: {e}"}), 500
 
 # 즐겨찾기 룩북 조회(없으면 자동 생성)
 @app.route('/favorite-collection', methods=['GET'])
@@ -981,16 +985,45 @@ def get_collection_outfits(collection_id):
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
 
+        # 즐겨찾기 폴더인지 확인
         cursor.execute("""
-        SELECT
-            saved_id,
-            title,
-            memo,
-            created_at,
-            outfit_json
-        FROM saved_outfits
-        WHERE collection_id = ?
+            SELECT collection_name
+            FROM collections
+            WHERE collection_id = ?
         """, (collection_id,))
+
+        collection = cursor.fetchone()
+
+        is_favorite_collection = (
+            collection and collection[0] == "즐겨찾기"
+        )
+
+        if is_favorite_collection:
+
+            cursor.execute("""
+            SELECT
+                saved_id,
+                title,
+                memo,
+                created_at,
+                outfit_json
+            FROM saved_outfits
+            WHERE collection_id = ?
+            AND is_favorite = 1
+            """, (collection_id,))
+
+        else:
+
+            cursor.execute("""
+            SELECT
+                saved_id,
+                title,
+                memo,
+                created_at,
+                outfit_json
+            FROM saved_outfits
+            WHERE collection_id = ?
+            """, (collection_id,))
 
         rows = cursor.fetchall()
         conn.close()
@@ -1263,8 +1296,132 @@ def delete_multiple_clothes():
             "error": str(e)
         }), 500
 
+# 즐겨찾기 토글 API
+@app.route('/toggle-favorite', methods=['POST'])
+def toggle_favorite():
 
+    data = request.json
 
+    saved_id = data.get("saved_id")
+    title = data.get("title", "")
+    memo = data.get("memo", "")
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        # 이미 즐겨찾기인지 확인
+        cursor.execute("""
+            SELECT favorite_id
+            FROM favorite_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        row = cursor.fetchone()
+
+        # ❤️ 저장
+        if row is None:
+
+            cursor.execute("""
+                INSERT INTO favorite_outfits(
+                    saved_id,
+                    title,
+                    memo
+                )
+                VALUES (?, ?, ?)
+            """, (
+                saved_id,
+                title,
+                memo,
+            ))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "favorite": 1
+            })
+
+        # 🤍 취소
+        else:
+
+            cursor.execute("""
+                DELETE FROM favorite_outfits
+                WHERE saved_id = ?
+            """, (saved_id,))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "favorite": 0
+            })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 즐겨찾기 코디 목록 조회 API
+@app.route('/favorite-outfits', methods=['GET'])
+def favorite_outfits():
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                s.saved_id,
+                f.title,
+                f.memo,
+                s.created_at,
+                s.outfit_json
+            FROM favorite_outfits f
+            JOIN saved_outfits s
+            ON f.saved_id = s.saved_id
+            ORDER BY f.created_at DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        outfits = []
+
+        for row in rows:
+
+            images = json.loads(row[4])
+
+            outfits.append({
+                "saved_id": row[0],
+                "title": row[1],
+                "memo": row[2],
+                "created_at": row[3],
+                "items": {
+                    "top": get_any_item_info(images.get("top")),
+                    "bottom": get_any_item_info(images.get("bottom")),
+                    "dress": get_any_item_info(images.get("dress")),
+                    "outer": get_any_item_info(images.get("outer")),
+                    "shoes": get_any_item_info(images.get("shoes")),
+                    "bag": get_any_item_info(images.get("bag")),
+                    "accessory": get_any_item_info(images.get("accessory")),
+                }
+            })
+
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "outfits": outfits
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 # =========================================================================

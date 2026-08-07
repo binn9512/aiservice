@@ -30,8 +30,20 @@ def create_bookmark_tables():
         FOREIGN KEY(collection_id) REFERENCES collections(collection_id)
     );
     """)
+
+    # 3. 즐겨찾기 테이블
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS favorite_outfits (
+        favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        saved_id INTEGER NOT NULL UNIQUE,
+        title TEXT,
+        memo TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(saved_id) REFERENCES saved_outfits(saved_id)
+    );
+    """)
     
-    # 3. 테스트용 기본 폴더 몇 개 미리 넣어두기 (프론트가 가져가서 쓸 수 있게!)
+    # 4. 테스트용 기본 폴더 몇 개 미리 넣어두기 (프론트가 가져가서 쓸 수 있게!)
     cursor.execute("SELECT COUNT(*) FROM collections")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO collections (user_id, collection_name) VALUES ('su_ryong', '즐겨찾기')")

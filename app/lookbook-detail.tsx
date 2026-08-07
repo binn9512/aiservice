@@ -51,19 +51,24 @@ export default function LookbookDetailPage() {
 
   const loadOutfits = async () => {
     try {
-      let targetCollectionId = collectionId;
 
-      // 즐겨찾기면 실제 collection_id 조회
+      // ❤️ 즐겨찾기
       if (collectionId === 'favorite') {
-        const favoriteRes = await axios.get(
-          `${API_BASE_URL}/favorite-collection`
+
+        const res = await axios.get(
+          `${API_BASE_URL}/favorite-outfits`
         );
 
-        targetCollectionId = favoriteRes.data.collection_id;
+        if (res.data.success) {
+          setOutfits(res.data.outfits);
+        }
+
+        return;
       }
 
+      // 일반 룩북
       const res = await axios.get(
-        `${API_BASE_URL}/collection/${targetCollectionId}`
+        `${API_BASE_URL}/collection/${collectionId}`
       );
 
       if (res.data.success) {
@@ -84,36 +89,65 @@ export default function LookbookDetailPage() {
   );
 
   const showMenu = () => {
-    Alert.alert(
-      '룩북 관리',
-      '',
-      [
-        {
-          text: '제목 수정',
-          onPress: () => {
-            setEditTitle(String(title || ''));
-            setEditVisible(true);
+
+      if (collectionId === 'favorite') {
+
+        Alert.alert(
+          '즐겨찾기 관리',
+          '',
+          [
+            {
+              text: '정렬',
+              onPress: showSortMenu,
+            },
+            {
+              text: '좋아요 삭제',
+              style: 'destructive',
+              onPress: () => {
+                setSelectedIds([]);
+                setIsDeleteMode(true);
+              },
+            },
+            {
+              text: '취소',
+              style: 'cancel',
+            },
+          ]
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        '룩북 관리',
+        '',
+        [
+          {
+            text: '제목 수정',
+            onPress: () => {
+              setEditTitle(String(title || ''));
+              setEditVisible(true);
+            },
           },
-        },
-        {
-          text: '정렬',
-          onPress: showSortMenu,
-        },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: () => {
-            setSelectedIds([]);
-            setIsDeleteMode(true);
+          {
+            text: '정렬',
+            onPress: showSortMenu,
           },
-        },
-        {
-          text: '취소',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: () => {
+              setSelectedIds([]);
+              setIsDeleteMode(true);
+            },
+          },
+          {
+            text: '취소',
+            style: 'cancel',
+          },
+        ]
+      );
+    };
 
   const showSortMenu = () => {
     Alert.alert(
@@ -303,17 +337,13 @@ export default function LookbookDetailPage() {
           {title}
         </Text>
 
-        {collectionId !== 'favorite' ? (
-          <TouchableOpacity onPress={showMenu}>
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={24}
-              color="#111"
-            />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 24 }} />
-        )}
+        <TouchableOpacity onPress={showMenu}>
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={24}
+            color="#111"
+          />
+        </TouchableOpacity>
 
       </View>
 

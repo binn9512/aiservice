@@ -28,17 +28,41 @@ export default function LookbookOutfitDetailScreen() {
   const [editTitle, setEditTitle] = useState('');
   const [editMemo, setEditMemo] = useState('');
 
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [favoriteTitle, setFavoriteTitle] = useState('');
+  const [favoriteMemo, setFavoriteMemo] = useState('');
+
+  const [isFavorite, setIsFavorite] = useState(
+    collectionId === 'favorite'
+  );
+
   useEffect(() => {
     loadOutfit();
   }, []);
 
   const loadOutfit = async () => {
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/collection/${collectionId}`
-      );
+
+      let res;
+
+      // ❤️ 즐겨찾기
+      if (collectionId === 'favorite') {
+
+        res = await axios.get(
+          `${API_BASE_URL}/favorite-outfits`
+        );
+
+      } else {
+
+        // 일반 룩북
+        res = await axios.get(
+          `${API_BASE_URL}/collection/${collectionId}`
+        );
+
+      }
 
       if (res.data.success) {
+
         const found = res.data.outfits.find(
           (item: any) =>
             String(item.saved_id) === String(savedId)
@@ -47,7 +71,9 @@ export default function LookbookOutfitDetailScreen() {
         if (found) {
           setCurrent(found);
         }
+
       }
+
     } catch (e) {
       console.log(e);
     }
@@ -108,6 +134,99 @@ export default function LookbookOutfitDetailScreen() {
         },
       ]
     );
+  };
+
+  const toggleFavorite = () => {
+
+    // 🤍 → 즐겨찾기 저장
+    if (!isFavorite) {
+
+      setFavoriteTitle(current.title || '');
+      setFavoriteMemo(current.memo || '');
+
+      setSaveModalVisible(true);
+
+      return;
+    }
+
+    // ❤️ → 좋아요 취소
+    Alert.alert(
+      '좋아요 취소',
+      '이 코디를 즐겨찾기에서 삭제하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '좋아요 취소',
+          style: 'destructive',
+          onPress: async () => {
+
+            try {
+
+              const res = await axios.post(
+                `${API_BASE_URL}/toggle-favorite`,
+                {
+                  saved_id: current.saved_id,
+                }
+              );
+
+              if (res.data.success) {
+
+                setIsFavorite(false);
+
+                Alert.alert(
+                  '완료',
+                  '좋아요가 취소되었습니다.'
+                );
+              }
+
+            } catch (e) {
+              console.log(e);
+            }
+
+          },
+        },
+      ]
+    );
+  };
+
+  const saveFavorite = async () => {
+
+    try {
+
+      const res = await axios.post(
+        `${API_BASE_URL}/toggle-favorite`,
+        {
+          saved_id: current.saved_id,
+          title: favoriteTitle,
+          memo: favoriteMemo,
+        }
+      );
+
+      if (res.data.success) {
+
+        setSaveModalVisible(false);
+
+        setIsFavorite(true);
+
+        setCurrent({
+          ...current,
+          title: favoriteTitle,
+          memo: favoriteMemo,
+        });
+
+        Alert.alert(
+          '완료',
+          '즐겨찾기에 저장되었습니다.'
+        );
+      }
+
+    } catch (e) {
+      console.log(e);
+    }
+
   };
 
   const updateOutfit = async () => {
@@ -206,6 +325,57 @@ export default function LookbookOutfitDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      <Modal
+        visible={saveModalVisible}
+        animationType="slide"
+        transparent
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setSaveModalVisible(false)}
+          >
+            <Pressable
+              style={styles.saveModal}
+              onPress={(e) => e.stopPropagation()}
+            >
+
+              <Text style={styles.modalTitle}>
+                즐겨찾기 저장
+              </Text>
+
+              <TextInput
+                placeholder="코디 이름"
+                value={favoriteTitle}
+                onChangeText={setFavoriteTitle}
+                style={styles.modalInput}
+              />
+
+              <TextInput
+                placeholder="메모(선택)"
+                value={favoriteMemo}
+                onChangeText={setFavoriteMemo}
+                multiline
+                style={styles.memoInput}
+              />
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={saveFavorite}
+              >
+                <Text style={styles.saveButtonText}>
+                  저장
+                </Text>
+              </TouchableOpacity>
+
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
@@ -265,9 +435,20 @@ export default function LookbookOutfitDetailScreen() {
       </View>
 
       <View style={styles.infoBox}>
-        <Text style={styles.lookbookTitle}>
-          {current.title}
-        </Text>
+
+        <View style={styles.titleRow}>
+          <Text style={styles.lookbookTitle}>
+            {current.title}
+          </Text>
+
+          <TouchableOpacity onPress={toggleFavorite}>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={24}
+              color="#FF5C8A"
+            />
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.date}>
           {formattedDate}
@@ -466,5 +647,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

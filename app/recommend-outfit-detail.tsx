@@ -277,7 +277,7 @@ export default function RecommendOutfitDetailScreen() {
         .includes(item.category)
       )?.id;
 
-      await axios.post(
+      const saveRes = await axios.post(
         `${API_BASE_URL}/save-outfit`,
         {
           collection_id: favoriteId,
@@ -295,14 +295,23 @@ export default function RecommendOutfitDetailScreen() {
         }
       );
 
+      await axios.post(
+        `${API_BASE_URL}/toggle-favorite`,
+        {
+          saved_id: saveRes.data.saved_id,
+          title: lookbookTitle.trim() || '새 코디',
+          memo: lookbookMemo,
+        }
+      );
+
       setSaveModalVisible(false);
       setLookbookTitle('');
       setLookbookMemo('');
-      setIsFavorite(false);
+      setIsFavorite(true);
 
       Alert.alert(
         '완료',
-        '즐겨찾기에 저장되었습니다 ❤️'
+        '즐겨찾기에 저장되었습니다.'
       );
 
     } catch (e) {
@@ -578,14 +587,14 @@ export default function RecommendOutfitDetailScreen() {
             )}
 
             <TextInput
-              placeholder="코디 이름 (비워두면 오늘 날짜)"
+              placeholder="코디 이름"
               value={lookbookTitle}
               onChangeText={setLookbookTitle}
               style={styles.modalInput}
             />
 
             <TextInput
-              placeholder="메모 (선택)"
+              placeholder="메모(선택)"
               value={lookbookMemo}
               onChangeText={setLookbookMemo}
               multiline
