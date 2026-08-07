@@ -1,65 +1,211 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   TouchableOpacity,
   ScrollView,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import axios from 'axios';
 
-const dummyLookbooks = [
-  {
-    id: '1',
-    title: '데이트룩',
-    date: '2026.07.27',
-    memo: '오늘 데이트 갈 때 입었던 코디 💕',
-    outfitImage: 'https://picsum.photos/700/1000?1',
-    items: [
-      {
-        name: '화이트 셔츠',
-        image: 'https://picsum.photos/100?11',
-      },
-      {
-        name: '데님 팬츠',
-        image: 'https://picsum.photos/100?12',
-      },
-      {
-        name: '스니커즈',
-        image: 'https://picsum.photos/100?13',
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: '캠퍼스룩',
-    date: '2026.07.26',
-    memo: '편하게 입은 학교 코디',
-    outfitImage: 'https://picsum.photos/700/1000?2',
-    items: [
-      {
-        name: '후드티',
-        image: 'https://picsum.photos/100?21',
-      },
-      {
-        name: '조거팬츠',
-        image: 'https://picsum.photos/100?22',
-      },
-    ],
-  },
-];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 export default function LookbookOutfitDetailScreen() {
   const router = useRouter();
-  const { outfitId } = useLocalSearchParams();
+  const { collectionId, savedId } = useLocalSearchParams();
 
-  const current =
-    dummyLookbooks.find(v => v.id === outfitId) ??
-    dummyLookbooks[0];
+  const [current, setCurrent] = useState<any>(null);
+  const [editVisible, setEditVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editMemo, setEditMemo] = useState('');
+
+  useEffect(() => {
+    loadOutfit();
+  }, []);
+
+  const loadOutfit = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/collection/${collectionId}`
+      );
+
+      if (res.data.success) {
+        const found = res.data.outfits.find(
+          (item: any) =>
+            String(item.saved_id) === String(savedId)
+        );
+
+        if (found) {
+          setCurrent(found);
+        }
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const showMenu = () => {
+    Alert.alert(
+      '코디 관리',
+      '',
+      [
+        {
+          text: '수정',
+          onPress: () => {
+            setEditTitle(current.title);
+            setEditMemo(current.memo || '');
+            setEditVisible(true);
+          },
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: deleteOutfit,
+        },
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const deleteOutfit = () => {
+    Alert.alert(
+      '코디 삭제',
+      '이 코디를 삭제하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.delete(
+                `${API_BASE_URL}/saved-outfit/${savedId}`
+              );
+
+              Alert.alert('삭제되었습니다.');
+
+              router.back();
+            } catch (e) {
+              console.log(e);
+              Alert.alert('삭제에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const updateOutfit = async () => {
+    try {
+      await axios.put(
+        `${API_BASE_URL}/saved-outfit/${savedId}`,
+        {
+          title: editTitle,
+          memo: editMemo,
+        }
+      );
+
+      setCurrent({
+        ...current,
+        title: editTitle,
+        memo: editMemo,
+      });
+
+      setEditVisible(false);
+
+      Alert.alert('수정되었습니다.');
+    } catch (e) {
+      console.log(e);
+      Alert.alert('수정 실패');
+    }
+  };
+
+  const items = useMemo(() => {
+    if (!current) return [];
+
+    return Object.values(current.items || {}).filter(Boolean);
+  }, [current]);
+
+  if (!current) return null;
+
+  const date = new Date(current.created_at);
+
+  const formattedDate =
+    `${date.getFullYear()}.` +
+    `${String(date.getMonth() + 1).padStart(2, '0')}.` +
+    `${String(date.getDate()).padStart(2, '0')}`;
+
+  const outfitImage =
+  items.length > 0 ? (items[0] as any).image : undefined;
 
   return (
+    <>
+      <Modal
+        visible={editVisible}
+        animationType="slide"
+        transparent
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setEditVisible(false)}
+          >
+            <Pressable
+              style={styles.saveModal}
+              onPress={(e) => e.stopPropagation()}
+            >
+
+              <Text style={styles.modalTitle}>
+                룩북 수정
+              </Text>
+
+              <TextInput
+                placeholder="코디 이름"
+                value={editTitle}
+                onChangeText={setEditTitle}
+                style={styles.modalInput}
+              />
+
+              <TextInput
+                placeholder="메모"
+                value={editMemo}
+                onChangeText={setEditMemo}
+                multiline
+                style={styles.memoInput}
+              />
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={updateOutfit}
+              >
+                <Text style={styles.saveButtonText}>
+                  수정 완료
+                </Text>
+              </TouchableOpacity>
+
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
@@ -77,7 +223,7 @@ export default function LookbookOutfitDetailScreen() {
           {current.title}
         </Text>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={showMenu}>
           <Ionicons
             name="ellipsis-horizontal"
             size={22}
@@ -88,7 +234,7 @@ export default function LookbookOutfitDetailScreen() {
 
       <View style={styles.imageSection}>
         <Image
-          source={{ uri: current.outfitImage }}
+          source={{ uri: outfitImage }}
           style={styles.outfitImage}
         />
 
@@ -97,9 +243,9 @@ export default function LookbookOutfitDetailScreen() {
             코디 아이템
           </Text>
 
-          {current.items.map((item, index) => (
+          {items.map((item: any) => (
             <TouchableOpacity
-              key={index}
+              key={item.id}
               style={styles.itemRow}
             >
               <Image
@@ -111,7 +257,7 @@ export default function LookbookOutfitDetailScreen() {
                 numberOfLines={1}
                 style={styles.itemName}
               >
-                {item.name}
+                {item.name || item.category}
               </Text>
             </TouchableOpacity>
           ))}
@@ -124,7 +270,7 @@ export default function LookbookOutfitDetailScreen() {
         </Text>
 
         <Text style={styles.date}>
-          {current.date}
+          {formattedDate}
         </Text>
 
         <View style={styles.divider} />
@@ -134,17 +280,18 @@ export default function LookbookOutfitDetailScreen() {
         </Text>
 
         <Text style={styles.memo}>
-          {current.memo}
+          {current.memo || '메모가 없습니다.'}
         </Text>
 
         <TouchableOpacity style={styles.retryButton}>
           <Text style={styles.retryText}>
-            이 코디 다시 추천받기
+            비슷한 코디 다시 추천받기
           </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
-  );
+  </>
+);
 }
 
 const styles = StyleSheet.create({
@@ -154,7 +301,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 58,
+    paddingTop: 65,
     paddingHorizontal: 20,
     paddingBottom: 18,
     flexDirection: 'row',
@@ -267,5 +414,57 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+
+  saveModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 16,
+  },
+
+  memoInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    padding: 16,
+    height: 100,
+    textAlignVertical: 'top',
+  },
+
+  saveButton: {
+    marginTop: 24,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#FF5C8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

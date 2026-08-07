@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
+
 import {
   View,
   Text,
@@ -9,18 +14,19 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  TouchableOpacity,
 } from 'react-native';
 
 import axios from 'axios';
 
 import LookbookCard from './LookbookCard';
 
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
-
-export default function LookbookGrid() {
+export default function LookbookGrid({ isEditMode }: any) {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const [lookbookName, setLookbookName] = useState('');
@@ -29,7 +35,14 @@ export default function LookbookGrid() {
       id: 'add',
       type: 'add',
     },
+    {
+      id: 'favorite',
+      type: 'favorite',
+      title: '즐겨찾기',
+      count: 0,
+    },
   ]);
+
 
   const loadLookbooks = async () => {
     try {
@@ -43,6 +56,14 @@ export default function LookbookGrid() {
             id: 'add',
             type: 'add',
           },
+          {
+            id: 'favorite',
+            type: 'favorite',
+            title: '즐겨찾기',
+            count: res.data.favorite_count ?? 0,
+            images: [],
+          },
+
           ...res.data.collections.map((item: any) => ({
             id: String(item.id),
             title: item.name,
@@ -56,12 +77,64 @@ export default function LookbookGrid() {
     }
   };
 
-  useEffect(() => {
-    loadLookbooks();
-  }, []);
+  const deleteCollection = (item: any) => {
+    Alert.alert(
+      '룩북 삭제',
+      `"${item.title}" 룩북을 삭제하시겠습니까?\n저장된 코디도 함께 삭제됩니다.`,
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await axios.delete(
+                `${API_BASE_URL}/collection/${item.id}`
+              );
+
+              await loadLookbooks();
+            } catch (e) {
+              console.log(e);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLookbooks();
+    }, [])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadLookbooks();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
+      <View style={styles.topRow}>
+        <Text style={styles.topText}>
+          {lookbooks.length - 1}개의 룩북
+        </Text>
+
+        <TouchableOpacity
+          onPress={() =>
+            router.push('/lookbook-order')
+          }
+        >
+          <Text style={styles.topText}>
+            순서 편집
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
       <FlatList
         data={lookbooks}
         keyExtractor={item => item.id}
@@ -70,10 +143,28 @@ export default function LookbookGrid() {
         renderItem={({ item }) => (
           <LookbookCard
             item={item}
+            isEditMode={
+              isEditMode &&
+              item.type !== 'favorite'
+            }
+            onDelete={deleteCollection}
             onPress={() => {
               if (item.type === 'add') {
+
                 setModalVisible(true);
+
+              } else if (item.type === 'favorite') {
+
+                router.push({
+                  pathname: '/lookbook-detail',
+                  params: {
+                    collectionId: 'favorite',
+                    title: '즐겨찾기',
+                  },
+                });
+
               } else {
+
                 router.push({
                   pathname: '/lookbook-detail',
                   params: {
@@ -81,6 +172,7 @@ export default function LookbookGrid() {
                     title: item.title,
                   },
                 });
+
               }
             }}
           />
@@ -162,10 +254,23 @@ export default function LookbookGrid() {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  topText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666666',
+  },
+
   container: {
     paddingHorizontal: 20,
-    paddingTop: 15,
   },
+
   row: {
     justifyContent: 'space-between',
     marginBottom: 16,

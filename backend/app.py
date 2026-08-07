@@ -770,9 +770,14 @@ def get_collections():
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT collection_id, collection_name, created_at
+            SELECT
+                collection_id,
+                collection_name,
+                created_at,
+                display_order
             FROM collections
             WHERE user_id = ?
+            ORDER BY display_order
         """, ("su_ryong",))
 
         rows = cursor.fetchall()
@@ -822,14 +827,24 @@ def create_collection():
         cursor = conn.cursor()
 
         cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0) + 1
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        next_order = cursor.fetchone()[0]
+
+        cursor.execute("""
             INSERT INTO collections (
                 user_id,
-                collection_name
+                collection_name,
+                display_order
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?)
         """, (
             user_id,
-            collection_name
+            collection_name,
+            next_order
         ))
 
         collection_id = cursor.lastrowid
@@ -890,6 +905,75 @@ def save_outfit():
     except Exception as e:
         return jsonify({"success": False, "message": f"저장 실패 ㅠㅠ 에러: {e}"}), 500
 
+# 즐겨찾기 룩북 조회(없으면 자동 생성)
+@app.route('/favorite-collection', methods=['GET'])
+def favorite_collection():
+
+    user_id = "su_ryong"
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        # 이미 즐겨찾기 룩북이 있는지 확인
+        cursor.execute("""
+            SELECT collection_id
+            FROM collections
+            WHERE user_id = ?
+            AND collection_name = ?
+        """, (
+            user_id,
+            "즐겨찾기",
+        ))
+
+        row = cursor.fetchone()
+
+        if row:
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "collection_id": row[0]
+            })
+
+        # 없으면 새로 생성
+        cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0)
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        display_order = cursor.fetchone()[0] + 1
+
+        cursor.execute("""
+            INSERT INTO collections(
+                user_id,
+                collection_name,
+                display_order
+            )
+            VALUES (?, ?, ?)
+        """, (
+            user_id,
+            "즐겨찾기",
+            display_order,
+        ))
+
+        collection_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "collection_id": collection_id
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 # 사용자가 선택한 콜렉션 안의 저장된 코디 목록 조회 API
 @app.route('/collection/<int:collection_id>', methods=['GET'])
 def get_collection_outfits(collection_id):
@@ -898,17 +982,14 @@ def get_collection_outfits(collection_id):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT
-                saved_id,
-                top_id,
-                bottom_id,
-                outer_id,
-                shoes_id,
-                bag_id,
-                accessory_id
-            FROM saved_outfits
-            WHERE collection_id = ?
-            ORDER BY saved_id DESC
+        SELECT
+            saved_id,
+            title,
+            memo,
+            created_at,
+            outfit_json
+        FROM saved_outfits
+        WHERE collection_id = ?
         """, (collection_id,))
 
         rows = cursor.fetchall()
@@ -917,15 +998,22 @@ def get_collection_outfits(collection_id):
         outfit_list = []
 
         for row in rows:
+
+            images = json.loads(row[4])
+
             outfit_list.append({
                 "saved_id": row[0],
+                "title": row[1],
+                "memo": row[2],
+                "created_at": row[3],   # 추가
                 "items": {
-                    "top": get_any_item_info(row[1]),
-                    "bottom": get_any_item_info(row[2]),
-                    "outer": get_any_item_info(row[3]),
-                    "shoes": get_any_item_info(row[4]),
-                    "bag": get_any_item_info(row[5]),
-                    "accessory": get_any_item_info(row[6])
+                    "top": get_any_item_info(images.get("top")),
+                    "bottom": get_any_item_info(images.get("bottom")),
+                    "dress": get_any_item_info(images.get("dress")),
+                    "outer": get_any_item_info(images.get("outer")),
+                    "shoes": get_any_item_info(images.get("shoes")),
+                    "bag": get_any_item_info(images.get("bag")),
+                    "accessory": get_any_item_info(images.get("accessory")),
                 }
             })
 
@@ -968,6 +1056,38 @@ def delete_saved_outfit(saved_id):
             "error": str(e)
         }), 500
 
+# 저장된 코디 하나를 수정하는 API
+@app.route('/saved-outfit/<int:saved_id>', methods=['PUT'])
+def update_saved_outfit(saved_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE saved_outfits
+            SET title = ?, memo = ?
+            WHERE saved_id = ?
+        """, (
+            data.get("title"),
+            data.get("memo"),
+            saved_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 # 콜렉션(폴더) 하나를 삭제하는 API
 @app.route('/collection/<int:collection_id>', methods=['DELETE'])
 def delete_collection(collection_id):
@@ -1000,6 +1120,151 @@ def delete_collection(collection_id):
             "success": False,
             "error": str(e)
         }), 500
+
+# 순서 저장 API
+@app.route('/update-collection-order', methods=['POST'])
+def update_collection_order():
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        for item in data["collections"]:
+            cursor.execute("""
+                UPDATE collections
+                SET display_order = ?
+                WHERE collection_id = ?
+            """, (
+                item["order"],
+                item["id"],
+            ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 콜렉션 이름 수정 API
+@app.route('/collection/<int:collection_id>', methods=['PUT'])
+def update_collection(collection_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE collections
+            SET collection_name = ?
+            WHERE collection_id = ?
+        """, (
+            data.get("name"),
+            collection_id,
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 코디 삭제 API
+@app.route('/delete-saved-outfits', methods=['POST'])
+def delete_saved_outfits():
+    data = request.json
+
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM saved_outfits
+            WHERE saved_id IN ({placeholders})
+            """,
+            ids,
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 옷 삭제 API
+@app.route('/delete-clothes', methods=['POST'])
+def delete_multiple_clothes():
+    data = request.json
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM clothes
+            WHERE clothes_id IN ({placeholders})
+            """,
+            ids
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+
 
 
 # =========================================================================
