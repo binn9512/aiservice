@@ -16,12 +16,21 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import axios from 'axios';
+import LookbookSelector from '@/components/lookbook/LookbookSelector';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 export default function LookbookOutfitDetailScreen() {
   const router = useRouter();
-  const { collectionId, savedId } = useLocalSearchParams();
+  const {
+    collectionId,
+    savedId,
+    title,
+  } = useLocalSearchParams<{
+    collectionId: string;
+    savedId: string;
+    title: string;
+  }>();
 
   const [current, setCurrent] = useState<any>(null);
   const [editVisible, setEditVisible] = useState(false);
@@ -31,6 +40,13 @@ export default function LookbookOutfitDetailScreen() {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [favoriteTitle, setFavoriteTitle] = useState('');
   const [favoriteMemo, setFavoriteMemo] = useState('');
+
+  const [collections, setCollections] = useState<any[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<any[]>([]);
+  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
+
+  const [showCreateInput, setShowCreateInput] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
 
   const [isFavorite, setIsFavorite] = useState(
     collectionId === 'favorite'
@@ -79,6 +95,51 @@ export default function LookbookOutfitDetailScreen() {
     }
   };
 
+  const loadCollections = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/get-collections`
+      );
+
+      if (res.data.success) {
+        setCollections(res.data.collections);
+        return res.data.collections;   // ⭐ 추가
+      }
+
+      return [];
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+  };
+
+  const createCollection = async () => {
+    if (!newCollectionName.trim()) return;
+
+    try {
+      const res = await axios.post(
+        `${API_BASE_URL}/create-collection`,
+        {
+          name: newCollectionName,
+        }
+      );
+
+      if (res.data.success) {
+        await loadCollections();
+
+        setSelectedCollections([
+          ...selectedCollections,
+          res.data.collection,
+        ]);
+
+        setShowCreateInput(false);
+        setNewCollectionName('');
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const showMenu = () => {
     Alert.alert(
       '코디 관리',
@@ -86,9 +147,21 @@ export default function LookbookOutfitDetailScreen() {
       [
         {
           text: '수정',
-          onPress: () => {
+          onPress: async () => {
             setEditTitle(current.title);
             setEditMemo(current.memo || '');
+
+            const collections = await loadCollections();
+
+            const currentCollection = collections.find(
+              (item: any) =>
+                item.id === Number(collectionId)
+            );
+
+            setSelectedCollections(
+              currentCollection ? [currentCollection] : []
+            );
+
             setEditVisible(true);
           },
         },
@@ -134,6 +207,18 @@ export default function LookbookOutfitDetailScreen() {
         },
       ]
     );
+  };
+
+  const toggleCollection = (collection: any) => {
+    setSelectedCollections(prev => {
+      const exists = prev.some(c => c.id === collection.id);
+
+      if (exists) {
+        return prev.filter(c => c.id !== collection.id);
+      }
+
+      return [...prev, collection];
+    });
   };
 
   const toggleFavorite = () => {
@@ -231,6 +316,7 @@ export default function LookbookOutfitDetailScreen() {
 
   const updateOutfit = async () => {
     try {
+      // 제목 / 메모 수정
       await axios.put(
         `${API_BASE_URL}/saved-outfit/${savedId}`,
         {
@@ -239,15 +325,30 @@ export default function LookbookOutfitDetailScreen() {
         }
       );
 
-      setCurrent({
-        ...current,
-        title: editTitle,
-        memo: editMemo,
-      });
+      // 룩북 변경
+      await axios.post(
+        `${API_BASE_URL}/update-outfit-collections`,
+        {
+          saved_id: Number(savedId),
+          collection_ids: selectedCollections.map(
+            item => item.id
+          ),
+        }
+      );
 
       setEditVisible(false);
 
-      Alert.alert('수정되었습니다.');
+      Alert.alert(
+        '수정 완료',
+        '룩북이 수정되었습니다.',
+        [
+          {
+            text: '확인',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+
     } catch (e) {
       console.log(e);
       Alert.alert('수정 실패');
@@ -295,6 +396,23 @@ export default function LookbookOutfitDetailScreen() {
               <Text style={styles.modalTitle}>
                 룩북 수정
               </Text>
+
+              <LookbookSelector
+                collections={collections}
+                selectedCollections={selectedCollections}
+                isCollectionOpen={isCollectionOpen}
+                showCreateInput={showCreateInput}
+                newCollectionName={newCollectionName}
+                onToggleOpen={() =>
+                    setIsCollectionOpen(!isCollectionOpen)
+                }
+                onToggleCollection={toggleCollection}
+                onToggleCreateInput={() =>
+                    setShowCreateInput(!showCreateInput)
+                }
+                onChangeNewCollectionName={setNewCollectionName}
+                onCreateCollection={createCollection}
+            />
 
               <TextInput
                 placeholder="코디 이름"
@@ -390,7 +508,7 @@ export default function LookbookOutfitDetailScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          {current.title}
+          {title}
         </Text>
 
         <TouchableOpacity onPress={showMenu}>
@@ -482,16 +600,16 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 65,
+    paddingTop: 70,
     paddingHorizontal: 20,
-    paddingBottom: 18,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
 
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#111',
   },
@@ -653,5 +771,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+
+  dropdownButton: {
+    height: 52,
+    backgroundColor: '#F7F7F7',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  dropdownText: {
+    fontSize: 16,
+    color: '#666',
+  },
+
+  collectionList: {
+    maxHeight: 220,
+    backgroundColor: '#F7F7F7',
+    borderRadius: 14,
+    marginBottom: 18,
+  },
+
+  collectionItem: {
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+
+  collectionText: {
+    fontSize: 16,
+    color: '#111',
+  },
+
+  addCollectionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF5C8A',
+    paddingVertical: 14,
+  },
+
+  createInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+
+  createInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    paddingHorizontal: 14,
+  },
+
+  createCircleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF5C8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
 });

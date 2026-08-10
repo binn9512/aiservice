@@ -280,6 +280,7 @@ export default function LookbookDetailPage() {
           params: {
             savedId: item.saved_id,
             collectionId,
+            title,
           },
         });
       }}

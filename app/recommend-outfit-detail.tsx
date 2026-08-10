@@ -19,6 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import ItemDetailModal from '../src/components/modal/ItemDetailModal';
 import { OutfitItem } from '../src/types/outfit';
 import { Ionicons } from '@expo/vector-icons';
+import LookbookSelector from '../src/components/lookbook/LookbookSelector';
 import axios from 'axios';
 
 
@@ -60,13 +61,24 @@ export default function RecommendOutfitDetailScreen() {
   const [lookbookTitle, setLookbookTitle] = useState('');
   const [lookbookMemo, setLookbookMemo] = useState('');
   const [collections, setCollections] = useState<any[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<any>(null);
-  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState<any[]>([]);  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
 
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
 
   const [isFavorite, setIsFavorite] = useState(false);
+
+  const toggleCollection = (collection: any) => {
+    setSelectedCollections(prev => {
+      const exists = prev.some(c => c.id === collection.id);
+
+      if (exists) {
+        return prev.filter(c => c.id !== collection.id);
+      }
+
+      return [...prev, collection];
+    });
+  };
 
   useEffect(() => {
     const loadFaceImage = async () => {
@@ -110,8 +122,8 @@ export default function RecommendOutfitDetailScreen() {
         // 목록 다시 불러오기
         await loadCollections();
 
-        // 새로 만든 룩북 선택
-        setSelectedCollection(res.data.collection);
+        // 새로 만든 룩북 자동 선택
+        setSelectedCollections([res.data.collection]);
 
         // 드롭다운 닫기
         setIsCollectionOpen(false);
@@ -129,7 +141,7 @@ export default function RecommendOutfitDetailScreen() {
   };
 
   const saveLookbook = async () => {
-    if (!selectedCollection) {
+    if (selectedCollections.length === 0) {
       alert('룩북을 선택해주세요.');
       return;
     }
@@ -204,7 +216,7 @@ export default function RecommendOutfitDetailScreen() {
       await axios.post(
         `${API_BASE_URL}/save-outfit`,
         {
-          collection_id: selectedCollection.id,
+          collection_ids: selectedCollections.map(c => c.id),
 
           title:
             lookbookTitle.trim() ||
@@ -409,7 +421,7 @@ export default function RecommendOutfitDetailScreen() {
                 setLookbookTitle('');
                 setLookbookMemo('');
                 loadCollections();
-                setSelectedCollection(null);
+                setSelectedCollections([]);
                 setSaveModalVisible(true);
                 setIsFavorite(true);
               }}
@@ -491,98 +503,22 @@ export default function RecommendOutfitDetailScreen() {
 
             {!isFavorite && (
               <>
-                <TouchableOpacity
-                  style={styles.dropdownButton}
-                  onPress={() => setIsCollectionOpen(!isCollectionOpen)}
-                >
-                  <Text style={styles.dropdownText}>
-                    {selectedCollection
-                      ? selectedCollection.name
-                      : '룩북 선택'}
-                  </Text>
-
-                  <Ionicons
-                    name={isCollectionOpen ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-
-                {isCollectionOpen && (
-                  <ScrollView
-                    style={styles.collectionList}
-                    nestedScrollEnabled
-                    showsVerticalScrollIndicator={false}
-                  >
-
-                    <TouchableOpacity
-                      style={styles.collectionItem}
-                      onPress={() => {
-                        setShowCreateInput(!showCreateInput);
-                      }}
-                    >
-                      <Text style={styles.addCollectionText}>
-                        ➕ 새 룩북 만들기
-                      </Text>
-                    </TouchableOpacity>
-
-                    {showCreateInput && (
-                      <View style={styles.createInputContainer}>
-
-                        <TextInput
-                          placeholder="새 룩북 이름"
-                          value={newCollectionName}
-                          onChangeText={setNewCollectionName}
-                          style={styles.createInput}
-                        />
-
-                        <TouchableOpacity
-                          style={styles.createCircleButton}
-                          onPress={createCollection}
-                        >
-                          <Ionicons
-                            name="add"
-                            size={22}
-                            color="#fff"
-                          />
-                        </TouchableOpacity>
-
-                      </View>
-                    )}
-
-                    {collections.map((item) => (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={styles.collectionItem}
-                        onPress={() => {
-                          setSelectedCollection(item);
-                          setIsCollectionOpen(false);
-                        }}
-                      >
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <Text style={styles.collectionText}>
-                            {item.name}
-                          </Text>
-
-                          {selectedCollection?.id === item.id && (
-                            <Ionicons
-                              name="checkmark"
-                              size={20}
-                              color="#FF5C8A"
-                            />
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-
-                  </ScrollView>
-                )}
+                <LookbookSelector
+                  collections={collections}
+                  selectedCollections={selectedCollections}
+                  isCollectionOpen={isCollectionOpen}
+                  showCreateInput={showCreateInput}
+                  newCollectionName={newCollectionName}
+                  onToggleOpen={() =>
+                    setIsCollectionOpen(!isCollectionOpen)
+                  }
+                  onToggleCollection={toggleCollection}
+                  onToggleCreateInput={() =>
+                    setShowCreateInput(!showCreateInput)
+                  }
+                  onChangeNewCollectionName={setNewCollectionName}
+                  onCreateCollection={createCollection}
+                />
               </>
             )}
 

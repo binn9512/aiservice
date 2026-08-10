@@ -871,7 +871,7 @@ def create_collection():
 def save_outfit():
     data = request.json
     user_id = 'su_ryong'  # 로그인 대용 임시 고정 유저
-    collection_id = data.get('collection_id')
+    collection_ids = data.get("collection_ids", [])
 
     title = data.get("title", "")
     memo = data.get("memo", "")
@@ -881,31 +881,34 @@ def save_outfit():
         conn = sqlite3.connect('codi_v2.db')
         cursor = conn.cursor()
         
-        cursor.execute("""
-            INSERT INTO saved_outfits (
+        saved_ids = []
+
+        for collection_id in collection_ids:
+            cursor.execute("""
+                INSERT INTO saved_outfits (
+                    user_id,
+                    collection_id,
+                    title,
+                    memo,
+                    outfit_json,
+                    is_favorite
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
                 user_id,
                 collection_id,
                 title,
                 memo,
                 outfit_json,
-                is_favorite
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user_id,
-            collection_id,
-            title,
-            memo,
-            outfit_json,
-            1
-        ))
+                1
+            ))
 
-        saved_id = cursor.lastrowid
+            saved_ids.append(cursor.lastrowid)
         
         conn.commit()
         conn.close()
         
-        return jsonify({"success": True, "saved_id": saved_id, "message": "코디가 성공적으로 저장되었습니다!"})
+        return jsonify({"success": True, "saved_ids": saved_ids, "message": "코디가 성공적으로 저장되었습니다!"})
     except Exception as e:
         return jsonify({"success": False, "message": f"저장 실패. 에러: {e}"}), 500
 
@@ -1415,6 +1418,87 @@ def favorite_outfits():
         return jsonify({
             "success": True,
             "outfits": outfits
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+# 저장된 코디의 룩북(컬렉션) 정보를 수정하는 API
+@app.route('/update-outfit-collections', methods=['POST'])
+def update_outfit_collections():
+    data = request.json
+
+    saved_id = data.get("saved_id")
+    collection_ids = data.get("collection_ids", [])
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        # 기존 코디 정보 가져오기
+        cursor.execute("""
+            SELECT
+                user_id,
+                title,
+                memo,
+                outfit_json,
+                is_favorite
+            FROM saved_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({
+                "success": False,
+                "message": "코디를 찾을 수 없습니다."
+            }), 404
+
+        user_id, title, memo, outfit_json, is_favorite = row
+
+        # 기존 코디 삭제
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        new_ids = []
+
+        # 선택한 룩북들에 다시 저장
+        for collection_id in collection_ids:
+
+            cursor.execute("""
+                INSERT INTO saved_outfits (
+                    user_id,
+                    collection_id,
+                    title,
+                    memo,
+                    outfit_json,
+                    is_favorite
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                collection_id,
+                title,
+                memo,
+                outfit_json,
+                is_favorite
+            ))
+
+            new_ids.append(cursor.lastrowid)
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "saved_ids": new_ids
         })
 
     except Exception as e:
