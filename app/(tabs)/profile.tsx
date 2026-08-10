@@ -11,39 +11,9 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import useGoogleCalendar from '../../src/hooks/useGoogleCalendar';
-
-type ProfileData = {
-  style: string;
-  personalColor: string;
-  colorMood: string;
-  bodyType: string;
-  highlight: string;
-  cover: string;
-};
-
-const defaultProfile: ProfileData = {
-  style: '페미닌 · 소프트',
-  personalColor: '봄 웜 라이트',
-  colorMood: '파스텔톤',
-  bodyType: '웨이브 · 상체 슬림',
-  highlight: '허리',
-  cover: '복부',
-};
-
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoLeft}>
-        <Text style={styles.infoIcon}>{icon}</Text>
-        <Text style={styles.infoLabel}>{label}</Text>
-      </View>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
 
 function WeatherCard({ weather }: { weather: { title: string; message: string } }) {
   return (
@@ -59,10 +29,8 @@ function WeatherCard({ weather }: { weather: { title: string; message: string } 
 
 const ProfileScreen = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.219.125:5001';
 
-  const [profileData, setProfileData] = useState(defaultProfile);
   const [weather, setWeather] = useState({ title: '오늘의 날씨', message: '날씨 정보를 불러오는 중입니다.' });
   const [faceImage, setFaceImage] = useState<string | null>(null);
   const calendar = useGoogleCalendar();
@@ -121,23 +89,6 @@ const ProfileScreen = () => {
               </Pressable>
             </View>
           </View>
-        </View>
-
-        {/* 나의 정보 섹션 */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.infoTitle}>나의 정보</Text>
-          <Pressable onPress={() => router.push('/survey')}>
-            <Text style={styles.actionText}>설문 다시하기 〉</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.infoList}>
-          <InfoRow icon="🩷" label="스타일 선호도" value={profileData.style} />
-          <InfoRow icon="🎨" label="퍼스널 컬러" value={profileData.personalColor} />
-          <InfoRow icon="🌈" label="좋아하는 색상" value={profileData.colorMood} />
-          <InfoRow icon="🧍‍♀️" label="체형" value={profileData.bodyType} />
-          <InfoRow icon="✨" label="강조하고 싶은 부위" value={profileData.highlight} />
-          <InfoRow icon="🛡️" label="가리고 싶은 부위" value={profileData.cover} />
         </View>
 
         {/* Google 캘린더 연동 섹션 */}
@@ -199,15 +150,6 @@ const styles = StyleSheet.create({
   avatarTitle: { fontSize: 18, fontWeight: '700', color: '#FF5C8A', marginBottom: 8 },
   avatarButton: { backgroundColor: '#FF5C8A', borderRadius: 14, height: 40, justifyContent: 'center', alignItems: 'center' },
   avatarButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 8 },
-  infoTitle: { fontSize: 18, fontWeight: '700', color: '#111111' },
-  actionText: { fontSize: 13, color: '#FF5C8A', fontWeight: '600' },
-  infoList: { marginHorizontal: 20, marginBottom: 18 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F3F3' },
-  infoLeft: { flexDirection: 'row', alignItems: 'center' },
-  infoIcon: { width: 30, fontSize: 15 },
-  infoLabel: { fontSize: 14, color: '#111111' },
-  infoValue: { fontSize: 14, fontWeight: '500', color: '#555555' },
   weatherCard: { marginHorizontal: 20, borderRadius: 18, backgroundColor: '#EEF8F0', padding: 18, flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   weatherEmoji: { fontSize: 34, marginRight: 16 },
   weatherSectionTitle: { fontSize: 18, fontWeight: '700', color: '#111111', marginHorizontal: 20, marginTop: 4, marginBottom: 12 },

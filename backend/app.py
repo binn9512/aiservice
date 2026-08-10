@@ -18,6 +18,9 @@ from outfit_generator import generate_outfit_image
 import os
 import re
 
+import google_calendar as gcal
+from calendar_outfit import detect_calendar_intent, generate_schedule_outfit_response
+
 print("=== APP START ===")
 print("현재 작업 폴더:", os.getcwd())
 print("DB 절대경로:", os.path.abspath("codi_v2.db"))
@@ -530,6 +533,26 @@ def chat_api():
 
     # 🌟 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
     room_id = user_data.get('room_id', 'default')
+
+    # 🌟 [구글 캘린더 추가 영역] 일정 기반 코디 요청인지 먼저 판별
+    calendar_intent = detect_calendar_intent(user_message, room_id)
+    if calendar_intent:
+        schedule_result = generate_schedule_outfit_response(user_message, room_id)
+        return jsonify({
+            "success": True,
+            "message": schedule_result["assistantMessage"],
+            "outfit_image": None,
+            "images": {},
+            "items": {},
+            "intent": schedule_result["intent"],
+            "calendarConnected": schedule_result["calendarConnected"],
+            "dateLabel": schedule_result["dateLabel"],
+            "events": schedule_result["events"],
+            "needsClarification": schedule_result["needsClarification"],
+            "clarifyingQuestion": schedule_result["clarifyingQuestion"],
+            "suggestedActions": schedule_result["suggestedActions"],
+            "transitionPlan": schedule_result["transitionPlan"],
+        })
     
     # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
     ai_string_response = chat_with_closet(user_message, room_id)
@@ -1683,6 +1706,95 @@ def generate_avatar():
             "success": False,
             "error": str(e)
         }), 500
+
+# =========================================================================
+# 📅 Google Calendar 연동 API
+# =========================================================================
+
+# 1) 캘린더 연결 상태 확인 API
+@app.route('/api/calendar/status', methods=['GET'])
+def calendar_status():
+    account = gcal.get_account()
+    return jsonify({
+        "connected": account is not None,
+        "email": account.get("email") if account else None,
+    })
+
+
+# 2) 구글 OAuth 로그인 인증 토큰 교환 API
+@app.route('/api/calendar/auth/google', methods=['POST'])
+def calendar_auth_google():
+    data = request.json or {}
+    code = data.get('code')
+    redirect_uri = data.get('redirectUri')
+    code_verifier = data.get('codeVerifier')
+
+    if not code or not redirect_uri:
+        return jsonify({"success": False, "error": "code와 redirectUri가 필요합니다."}), 400
+
+    try:
+        tokens = gcal.exchange_code_for_tokens(code, redirect_uri, code_verifier)
+        email = gcal.get_user_email(tokens['access_token'])
+        gcal.save_account(
+            access_token=tokens['access_token'],
+            refresh_token=tokens.get('refresh_token'),
+            expires_in=tokens.get('expires_in'),
+            email=email,
+        )
+        return jsonify({"success": True, "email": email})
+    except gcal.GoogleCalendarError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"캘린더 연결 중 오류가 발생했습니다: {e}"}), 500
+
+
+# 3) 캘린더 연동 해제 API
+@app.route('/api/calendar/disconnect', methods=['POST'])
+def calendar_disconnect():
+    try:
+        gcal.delete_account()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# 4) 기간별 일정 목록 가져오기 API
+@app.route('/api/calendar/events', methods=['GET'])
+def calendar_events():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    if not start or not end:
+        return jsonify({"success": False, "error": "start와 end가 필요합니다."}), 400
+
+    try:
+        access_token = gcal.get_valid_access_token()
+    except gcal.GoogleCalendarError:
+        access_token = None
+
+    if not access_token:
+        return jsonify({"success": False, "error": "캘린더가 연결되어 있지 않습니다."}), 401
+
+    try:
+        events = gcal.list_events(access_token, start, end)
+        return jsonify({"success": True, "events": events})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"일정을 불러오지 못했습니다: {e}"}), 502
+
+
+# 5) 일정 기반 코디 전용 단독 요청 API
+@app.route('/api/chat/schedule-outfit', methods=['POST'])
+def chat_schedule_outfit():
+    data = request.json or {}
+    message = data.get('message', '')
+    room_id = data.get('room_id', 'default')
+
+    if not message:
+        return jsonify({"success": False, "error": "message가 필요합니다."}), 400
+
+    result = generate_schedule_outfit_response(message, room_id)
+    result["success"] = True
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

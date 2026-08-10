@@ -1,41 +1,35 @@
-const quickPrompts = [
+export interface QuickPrompt {
+  id: string;
+  category: string;
+  text: string;
+}
+
+export const quickPrompts = [
   {
     id: '1',
-    title: '날씨 코디',
-    prompt:
-      '오늘 날씨 코디 추천해줘',
+    category: '날씨/상황',
+    text: '오늘 날씨에 맞는 코디 추천해줘',
   },
-
   {
     id: '2',
-    title: '데이트룩',
-    prompt:
-      '데이트룩 추천해줘',
+    category: '스타일',
+    text: '데이트룩으로 좋은 스타일 추천해줘',
   },
-
   {
     id: '3',
-    title: '출근룩',
-    prompt:
-      '출근룩 추천해줘',
+    category: '스타일',
+    text: '출근할 때 입기 좋은 깔끔한 룩 추천해줘',
   },
-
   {
     id: '4',
-    title: '미니멀룩',
-    prompt:
-      '미니멀룩 추천해줘',
+    category: '스타일',
+    text: '미니멀룩 추천해줘',
   },
-<<<<<<< HEAD
-=======
-
   {
     id: '5',
-    title: '오늘 일정 코디',
-    prompt:
-      '오늘 일정에 맞춰 코디 추천해줘',
+    category: '일정/캘린더',
+    text: '내일 일정에 어울리는 코디 추천해줘',
   },
->>>>>>> 3e88487 (feat: Google Calendar 연동 기반 일정 코디 추천 기능 추가)
 ];
 
 export default quickPrompts;

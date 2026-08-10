@@ -5,7 +5,6 @@ import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarStatus, disconnectCalendar, getCalendarStatus, sendAuthCode } from '../api/calendar';
 
-// 인증 세션이 브라우저에서 앱으로 정상적으로 돌아오려면 모듈이 로드될 때 한 번 호출되어 있어야 한다.
 WebBrowser.maybeCompleteAuthSession();
 
 const discovery = {
@@ -13,8 +12,6 @@ const discovery = {
   tokenEndpoint: 'https://oauth2.googleapis.com/token',
   revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
 };
-
-const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 
 type CalendarErrorCode =
   | 'EXPO_GO_UNSUPPORTED'
@@ -43,7 +40,6 @@ const ERROR_MESSAGES: Record<CalendarErrorCode, string> = {
   UNKNOWN: '캘린더 연결 중 알 수 없는 오류가 발생했어요.',
 };
 
-// AuthError.message에는 error_description이 이미 포함되어 있고, 토큰/시크릿은 절대 담기지 않는다.
 function logAuthSessionError(context: string, error?: AuthSession.AuthError | null) {
   if (!error) {
     console.log(`[CALENDAR][${context}] error 정보 없음`);
@@ -62,8 +58,6 @@ function classifyAuthSessionError(error?: AuthSession.AuthError | null): Calenda
   return 'SESSION_FAILED';
 }
 
-// 백엔드 응답 본문의 error 필드는 Google/백엔드가 반환한 설명 문자열일 뿐, access_token이나
-// client secret은 절대 포함하지 않는다(그런 값은 백엔드가 응답 JSON에 담지 않음).
 function classifyBackendError(context: string, err: unknown): CalendarErrorCode {
   if (axios.isAxiosError(err)) {
     if (err.response) {
@@ -86,18 +80,24 @@ function classifyBackendError(context: string, err: unknown): CalendarErrorCode 
 }
 
 const useGoogleCalendar = () => {
+  // 💡 .env 값을 훅 실행 시점에 동적으로 읽어옵니다.
+  const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+
   const [status, setStatus] = useState<CalendarStatus>({ connected: false, email: null });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'myvffexpo', path: 'calendar-auth' });
 
+  // 콘솔로 생성된 redirectUri 확인
+  console.log('[CALENDAR] Client ID:', CLIENT_ID);
+  console.log('[CALENDAR] Redirect URI:', redirectUri);
+
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: CLIENT_ID,
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
-      // 읽기 전용 스코프만 요청한다. 쓰기/수정 권한은 절대 요청하지 않는다.
       scopes: ['https://www.googleapis.com/auth/calendar.readonly', 'email'],
       usePKCE: true,
     },
