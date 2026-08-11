@@ -14,10 +14,8 @@ import quickPromptData from '../../data/quickPrompts';
 
 type PromptItem = {
   id: string;
-
-  title: string;
-
-  prompt: string;
+  category: string;
+  text: string;
 };
 
 type Props = {
@@ -128,7 +126,7 @@ const QuickPromptSection = ({
                       !isEditMode
                     ) {
                       onPromptPress(
-                        item.prompt,
+                        item.text,
                       );
                     }
                   }}>
@@ -137,7 +135,7 @@ const QuickPromptSection = ({
                     style={
                       styles.quickPromptText
                     }>
-                    {item.title}
+                    {item.text}
                   </Text>
                 </TouchableOpacity>
 
@@ -252,11 +250,8 @@ const QuickPromptSection = ({
                         ...prev,
                         {
                           id: Date.now().toString(),
-
-                          title:
-                            newPrompt,
-
-                          prompt: `${newPrompt} 추천해줘`,
+                          category: '사용자',
+                          text: `${newPrompt} 추천해줘`,
                         },
                       ],
                     );
