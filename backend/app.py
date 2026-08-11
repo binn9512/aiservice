@@ -556,11 +556,64 @@ def chat_api():
         })
     
     # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
-    ai_string_response = chat_with_closet(user_message, room_id)
-    print(f"\n🤖 [서버 내부 로그] AI가 반환한 JSON: {ai_string_response}\n")
-    
     try:
-        ai_json = json.loads(ai_string_response)
+        ai_string_response = chat_with_closet(user_message, room_id)
+        print(f"\n🤖 [서버 내부 로그] AI가 반환한 원본: {ai_string_response}\n")
+
+        # 1. Groq 응답 검증 및 마크다운 정제 (```json ... ``` 제거)
+        # 1. Groq 응답 검증 및 마크다운 정제 (```json ... ``` 및 사족 텍스트 제거)
+        if not ai_string_response or not str(ai_string_response).strip():
+            print("❌ [오류] Groq API로부터 빈 응답이 들어왔습니다.")
+            return jsonify({"success": False, "message": "AI 응답을 받아오지 못했습니다. (빈 응답)"}), 500
+
+        cleaned_response = str(ai_string_response).strip()
+
+        # ```json ... ``` 마크다운 지우기
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response.split("```")[1]
+            if cleaned_response.startswith("json"):
+                cleaned_response = cleaned_response[4:]
+        cleaned_response = cleaned_response.strip()
+
+        # 🌟 [핵심 1] 앞뒤 붙은 대화 문장 잘라내고 { ... } 영역만 순수 추출
+        start_idx = cleaned_response.find('{')
+        end_idx = cleaned_response.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            cleaned_response = cleaned_response[start_idx:end_idx+1]
+
+        # 🌟 [핵심 2] 역슬래시(\") 탈출 문자 및 개행 제거
+        cleaned_response = cleaned_response.replace('\\"', '"').replace('\\n', ' ')
+
+        # 2. 안전한 JSON 파싱 (이중 파싱 및 예외 보정)
+        try:
+            ai_json = json.loads(cleaned_response)
+            
+            # 만약 한번 파싱했는데도 str 타입이면 한 번 더 파싱
+            if isinstance(ai_json, str):
+                ai_json = json.loads(ai_json)
+
+        except Exception as parse_err:
+            print(f"⚠️ [JSON 파싱 실패 -> 자동 보정 적용] 원본 문장: {ai_string_response}")
+            ai_json = {
+                "message": str(ai_string_response),
+                "top": None,
+                "bottom": None,
+                "outer": None,
+                "dress": None,
+                "shoes": None,
+                "bag": None,
+                "accessory": None
+            }
+
+        # 🌟 [핵심 3] "null" 이나 "None" 같은 문자열을 파이썬 None 타입으로 자동 변환
+        if isinstance(ai_json, dict):
+            for key, val in ai_json.items():
+                if str(val).strip().lower() in ["null", "none", "", "undefined"]:
+                    ai_json[key] = None
+
+        # 3. 아이템 정보 조회 (ai_json이 dict 타입인지 보장)
+        if not isinstance(ai_json, dict):
+            ai_json = {}
 
         # 💡 [핵심] get_any_item_info를 통해 내 옷장(MY_)과 무신사(SHOP_)를 자동 판별하여 정보 조회
         top_info = get_any_item_info(ai_json.get('top'))
@@ -584,13 +637,12 @@ def chat_api():
 
         # 합성 데모 이미지 생성 함수 호출
         outfit_image = get_demo_outfit_image(ai_json)
-        
+
         # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
-       # 이미지 주소 추출 보조 도구 (누끼 이미지 no_bg_url 1순위 적용)
         def resolve_image_url(info):
             if not info:
                 return None
-            
+                
             # 🌟 1순위: no_bg_url 최우선 탐색! (없을 때만 image, img_url 순으로 탐색)
             image_val = info.get("no_bg_url") or info.get("image") or info.get("img_url") or info.get("image_url")
             if not image_val:
@@ -643,7 +695,7 @@ def chat_api():
         # 프론트엔드로 반환할 최종 데이터
         return jsonify({
             "success": True,
-            "message": ai_json.get('message'),
+            "message": ai_json.get('message', ai_string_response),
             "outfit_image": outfit_image,
 
             # 개별 이미지 주소 맵
@@ -660,7 +712,7 @@ def chat_api():
             # 상세 옷 정보 맵
             "items": all_items
         })
-        
+
     except Exception as e:
         print(f"❌ /chat 라우트 에러 발생: {e}")
         return jsonify({
@@ -1711,7 +1763,7 @@ def generate_avatar():
 # =========================================================================
 # 📅 Google Calendar 연동 API
 # =========================================================================
-#1️⃣ [추가] 웹뷰 연동 시작점: 프론트엔드 웹뷰가 이 URL을 호출하면 구글 로그인 페이지로 이동
+# 1️⃣ [추가] 웹뷰 연동 시작점: 프론트엔드 웹뷰가 이 URL을 호출하면 구글 로그인 페이지로 이동
 @app.route('/api/calendar/login', methods=['GET'])
 def calendar_login():
     return redirect(gc.get_google_auth_url())
