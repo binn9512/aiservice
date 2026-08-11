@@ -3,8 +3,10 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { CalendarStatus, disconnectCalendar, getCalendarStatus, sendAuthCode } from '../api/calendar';
 
+// 브라우저 리디렉션 완료 처리
 WebBrowser.maybeCompleteAuthSession();
 
 const discovery = {
@@ -80,16 +82,21 @@ function classifyBackendError(context: string, err: unknown): CalendarErrorCode 
 }
 
 const useGoogleCalendar = () => {
-  // 💡 .env 값을 훅 실행 시점에 동적으로 읽어옵니다.
-  const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+  const CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '').trim();
 
   const [status, setStatus] = useState<CalendarStatus>({ connected: false, email: null });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'myvffexpo', path: 'calendar-auth' });
+  // 플랫폼별 Redirect URI 안전 생성
+  const redirectUri = Platform.OS === 'web'
+    ? `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081'}/calendar-auth`
+    : AuthSession.makeRedirectUri({
+      scheme: 'myvffexpo',
+      path: 'calendar-auth',
+      native: 'myvffexpo://calendar-auth',
+    });
 
-  // 콘솔로 생성된 redirectUri 확인
   console.log('[CALENDAR] Client ID:', CLIENT_ID);
   console.log('[CALENDAR] Redirect URI:', redirectUri);
 
@@ -98,8 +105,12 @@ const useGoogleCalendar = () => {
       clientId: CLIENT_ID,
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
-      scopes: ['https://www.googleapis.com/auth/calendar.readonly', 'email'],
+      scopes: ['https://www.googleapis.com/auth/calendar.readonly', 'email', 'openid'],
       usePKCE: true,
+      extraParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     },
     discovery,
   );

@@ -1,12 +1,14 @@
 import os
 import sqlite3
 import time
+from urllib.parse import urlencode
 
 import requests
 
 DB_PATH = 'codi_v2.db'
 DEFAULT_USER_ID = 'su_ryong'  # 기존 chat-room/save-outfit 라우트와 동일한 하드코딩 사용자
 
+AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
@@ -14,6 +16,7 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 
 GOOGLE_WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
 
 
 class GoogleCalendarError(Exception):
@@ -22,12 +25,29 @@ class GoogleCalendarError(Exception):
 
 # ---------------- OAuth ----------------
 
-def exchange_code_for_tokens(code, redirect_uri, code_verifier=None):
+def get_google_auth_url():
+    """웹뷰에서 접속할 구글 OAuth 로그인 URL을 생성합니다."""
+    params = {
+        "client_id": GOOGLE_WEB_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "https://www.googleapis.com/auth/calendar.readonly email openid",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    return f"{AUTH_URL}?{urlencode(params)}"
+
+
+def exchange_code_for_tokens(code, redirect_uri=None, code_verifier=None):
+    """구글 서버로 code를 보내 access_token 및 refresh_token을 교환합니다."""
+    # redirect_uri가 넘어오지 않으면 기본 설정된 백엔드 URI 사용
+    uri = redirect_uri or GOOGLE_REDIRECT_URI
+    
     data = {
         "code": code,
         "client_id": GOOGLE_WEB_CLIENT_ID,
         "client_secret": GOOGLE_CLIENT_SECRET,
-        "redirect_uri": redirect_uri,
+        "redirect_uri": uri,
         "grant_type": "authorization_code",
     }
     if code_verifier:
@@ -163,11 +183,6 @@ def _extract_start(event):
 
 
 def list_events(access_token, time_min, time_max):
-    """
-    time_min/time_max는 RFC3339 문자열(Asia/Seoul 기준으로 호출측에서 계산).
-    취소된 일정은 제외하고, 코디 추천에 필요한 최소 필드만 반환한다.
-    (참석자 이메일, 화상회의 링크, 반복 일정 식별자, 첨부파일 등은 절대 포함하지 않음)
-    """
     params = {
         "timeMin": time_min,
         "timeMax": time_max,

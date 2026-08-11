@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 from PIL import Image
 import uuid
 from outfit_generator import generate_outfit_image
-
+from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
+import google_calendar as gc # 👈 google_calendar 모듈 import
 import os
 import re
 
@@ -1710,6 +1711,47 @@ def generate_avatar():
 # =========================================================================
 # 📅 Google Calendar 연동 API
 # =========================================================================
+#1️⃣ [추가] 웹뷰 연동 시작점: 프론트엔드 웹뷰가 이 URL을 호출하면 구글 로그인 페이지로 이동
+@app.route('/api/calendar/login', methods=['GET'])
+def calendar_login():
+    return redirect(gc.get_google_auth_url())
+
+
+# 2️⃣ [추가] 구글 OAuth 콜백: 구글 로그인 완료 후 토큰을 받아 DB에 저장
+@app.route('/api/calendar/authS/callback', methods=['GET'])
+def calendar_callback():
+    code = request.args.get('code')
+    error = request.args.get('error')
+
+    if error or not code:
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: false }));
+            }
+        </script><h3>로그인이 취소되었습니다. 창을 닫아주세요.</h3></body></html>
+        """
+
+    try:
+        # 구글 서버에서 토큰 교환
+        tokens = gc.exchange_code_for_tokens(code)
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token")
+        expires_in = tokens.get("expires_in", 3600)
+
+        # 사용자 이메일 가져온 뒤 DB 저장
+        email = gc.get_user_email(access_token)
+        gc.save_account(access_token, refresh_token, expires_in, email)
+
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: true }));
+            }
+        </script><h3>구글 캘린더 연동 성공! 이 창을 닫아주세요.</h3></body></html>
+        """
+    except Exception as e:
+        return f"<h3>연동 실패: {str(e)}</h3>"
 
 # 1) 캘린더 연결 상태 확인 API
 @app.route('/api/calendar/status', methods=['GET'])
