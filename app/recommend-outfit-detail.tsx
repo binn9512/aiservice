@@ -646,9 +646,29 @@ const styles = StyleSheet.create({
   backButton: { fontSize: 38, color: '#111', marginRight: 8, marginTop: -4 },
   headerTitle: { fontSize: 18, fontWeight: '600', color: '#111', marginTop: 2 },
   outfitTitle: { fontSize: 22, fontWeight: '700', color: '#111', marginTop: 13, marginBottom: 12 },
-  content: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', position: 'relative' },
-  modelImage: { width: 240, height: 450, borderRadius: 24, resizeMode: 'cover', marginVertical: -55, marginLeft: -45 },
-  avatarWrapper: { width: 160, height: 340, position: 'relative' },
+  content: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
+},
+
+avatarWrapper: {
+  width: 200,
+  height: 340,
+  borderRadius: 24,
+  overflow: 'hidden',
+  backgroundColor: '#F5F5F5',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+modelImage: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 24,
+  resizeMode: 'contain',
+},
+
   itemBox: { width: 160, height: 340, marginLeft: 18, borderWidth: 1, borderColor: '#F1D8E1', borderRadius: 20, padding: 12 },
   itemTitle: { color: '#FF5C8A', fontWeight: '700', fontSize: 15, marginBottom: 14, marginLeft: 2 },
   itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
@@ -660,7 +680,7 @@ const styles = StyleSheet.create({
   actionContainer: {
   flexDirection: 'row',
   gap: 12,
-  marginTop: 20,
+  marginTop: 10,
   marginBottom: 24,
 },
 
@@ -883,5 +903,6 @@ loadingAvatarText: {
   color: '#FF5C8A',
   fontSize: 14,
   fontWeight: '600',
+  textAlign: 'center',
 },
 });

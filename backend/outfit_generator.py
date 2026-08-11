@@ -4,6 +4,7 @@ import requests
 import replicate
 from pathlib import Path
 from dotenv import load_dotenv
+from PIL import Image, ImageDraw, ImageFilter
 
 load_dotenv()
 
@@ -262,21 +263,91 @@ IMPORTANT:
             image_url,
             timeout=60
         )
+
         response.raise_for_status()
 
-        filename = (
-            f"outfit_{uuid.uuid4().hex}.png"
-        )
-
+        filename = f"outfit_{uuid.uuid4().hex}.png"
         save_path = OUTPUT_DIR / filename
 
+        # =====================================================
+        # 8. AI 생성 이미지 저장
+        # =====================================================
         with open(save_path, "wb") as f:
             f.write(response.content)
 
-        print(
-            "✅ 옷 입히기 완료:",
-            save_path
+                # =====================================================
+        # 9. 원본 아바타 얼굴만 자연스럽게 복원
+        # =====================================================
+        print("🔥 원본 얼굴 자연스럽게 복원 시작")
+
+        original_avatar = Image.open(avatar_file).convert("RGBA")
+        generated_image = Image.open(save_path).convert("RGBA")
+
+        # AI 결과 크기를 원본 아바타와 동일하게 맞춤
+        if generated_image.size != original_avatar.size:
+            generated_image = generated_image.resize(
+                original_avatar.size,
+                Image.Resampling.LANCZOS
+            )
+
+        width, height = original_avatar.size
+
+        # -----------------------------------------------------
+        # 얼굴 영역
+        #
+        # 기존보다 훨씬 작게 잡아서
+        # 머리카락 / 목 / 옷까지 원본 이미지가 덮지 않도록 함
+        # -----------------------------------------------------
+        face_left = int(width * 0.435)
+        face_right = int(width * 0.565)
+
+        face_top = int(height * 0.075)
+        face_bottom = int(height * 0.175)
+
+        # 얼굴 마스크
+        face_mask = Image.new(
+            "L",
+            original_avatar.size,
+            0
         )
+
+        draw = ImageDraw.Draw(face_mask)
+
+        draw.ellipse(
+            (
+                face_left,
+                face_top,
+                face_right,
+                face_bottom,
+            ),
+            fill=255
+        )
+
+        # -----------------------------------------------------
+        # 얼굴 가장자리를 아주 부드럽게
+        # -----------------------------------------------------
+        face_mask = face_mask.filter(
+            ImageFilter.GaussianBlur(12)
+        )
+
+        # -----------------------------------------------------
+        # 원본 얼굴만 복원
+        # -----------------------------------------------------
+        generated_image.paste(
+            original_avatar,
+            (0, 0),
+            face_mask
+        )
+
+        generated_image = generated_image.convert("RGB")
+
+        generated_image.save(
+            save_path,
+            format="PNG"
+        )
+
+        print("✅ 원본 얼굴 자연스럽게 복원 완료")
+        print("✅ 옷 입히기 최종 완료:", save_path)
 
         return f"output/{filename}"
 
