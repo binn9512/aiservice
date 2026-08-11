@@ -13,15 +13,13 @@ from io import BytesIO
 from dotenv import load_dotenv
 from PIL import Image
 import uuid
-from outfit_generator import generate_outfit_image
-<<<<<<< Updated upstream
 from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
 import google_calendar as gc # 👈 google_calendar 모듈 import
-=======
+
 from avatar_generator import generate_avatar_image
 from prompt_builder import build_prompt
+from outfit_generator import generate_outfit_image
 
->>>>>>> Stashed changes
 import os
 import re
 
@@ -681,13 +679,8 @@ def chat_api():
         }, indent=2, ensure_ascii=False))
 
         # 합성 데모 이미지 생성 함수 호출
-<<<<<<< Updated upstream
-        outfit_image = get_demo_outfit_image(ai_json)
-
-=======
         outfit_image = generated_image
         
->>>>>>> Stashed changes
         # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
         def resolve_image_url(info):
             if not info:
@@ -745,10 +738,6 @@ def chat_api():
         # 프론트엔드로 반환할 최종 데이터
         return jsonify({
             "success": True,
-<<<<<<< Updated upstream
-            "message": ai_json.get('message', ai_string_response),
-            "outfit_image": outfit_image,
-=======
             "message": ai_json.get('message'),
             "outfit_image":
 
@@ -760,7 +749,6 @@ def chat_api():
             if outfit_image
 
             else None,
->>>>>>> Stashed changes
 
             # 개별 이미지 주소 맵
             "images": {
