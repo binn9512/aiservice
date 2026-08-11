@@ -7,12 +7,6 @@ import os
 from dotenv import load_dotenv
 from weather import get_today_weather_and_outfit
 
-
-
-import sqlite3
-
-import sqlite3
-
 def get_musinsa_clothes_text():
     try:
         conn = sqlite3.connect('codi_v2.db')

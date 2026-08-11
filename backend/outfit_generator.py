@@ -1,65 +1,78 @@
-from PIL import Image
+import os
 import uuid
+import replicate
+from dotenv import load_dotenv
 
-from PIL import Image
-import uuid
+load_dotenv()
 
-POSITIONS = {
-    "bottom": {
-        "x": 300,
-        "y": 650,
-        "w": 400,
-        "h": 450,
-    }
-}
+client = replicate.Client(
+    api_token=os.getenv("REPLICATE_API_TOKEN")
+)
 
-def paste_item(base, item_path, category):
-    if not item_path:
-        return
+OUTPUT_DIR = "output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    pos = POSITIONS[category]
-
-    item = Image.open(item_path).convert("RGBA")
-
-    item.thumbnail(
-        (pos["w"], pos["h"]),
-        Image.LANCZOS,
-    )
-
-    base.alpha_composite(
-        item,
-        (pos["x"], pos["y"])
-    )
 
 def generate_outfit_image(
-    dress=None,
-    top=None,
-    bottom=None,
-    outer=None,
-    shoes=None,
-    bag=None,
+    avatar_path,
+    prompt,
 ):
-    try:
-        base = Image.open(
-            "static/avatar/base_avatar.png"
-        ).convert("RGBA")
+    """
+    avatar_path : generate-avatar에서 생성한 아바타 png
 
-        paste_item(
-            base,
-            bottom,
-            "bottom"
+    prompt 예시
+
+    Wear:
+    - white oversized shirt
+    - black wide slacks
+    - white sneakers
+    """
+
+    with open(avatar_path, "rb") as avatar:
+
+        output = client.run(
+            "black-forest-labs/flux-kontext-pro",
+            input={
+                "input_image": avatar,
+                "prompt": f"""
+Replace only the clothing.
+
+{prompt}
+
+Rules
+
+Keep exactly the same face.
+
+Keep hairstyle.
+
+Keep body shape.
+
+Keep pose.
+
+Keep camera angle.
+
+Keep background.
+
+Keep lighting.
+
+Do not change identity.
+
+Generate a realistic fashion photo.
+""",
+                "aspect_ratio": "match_input_image",
+                "output_format": "png",
+                "prompt_upsampling": False,
+            },
         )
 
-        filename = (
-            f"output/final_{uuid.uuid4()}.png"
-        )
+    filename = f"outfit_{uuid.uuid4()}.png"
 
-        base.save(filename)
+    save_path = os.path.join(
+        OUTPUT_DIR,
+        filename,
+    )
 
-        print("✅ 완료", filename)
+    with open(save_path, "wb") as f:
+        f.write(output.read())
 
-        return filename
-
-    except Exception as e:
-        print("❌", e)
-        return None
+    return save_path
