@@ -258,157 +258,6 @@ def get_item_info_by_id(clothing_id):
         print(f"❌ 옷 정보 조회 오류: {e}")
         return None
 
-def generate_outfit_image(
-    dress=None,
-    top=None,
-    bottom=None,
-    outer=None,
-    shoes=None,
-    bag=None,
-):
-    print("🔥 합성 함수 진입")
-    print("========== 합성 시작 ==========")
-    print("dress =", dress)
-    print("top =", top)
-    print("bottom =", bottom)
-    print("outer =", outer)
-    print("shoes =", shoes)
-    print("bag =", bag)
-    print("==============================")
-
-    try:
-        print(
-            "🔥 base exists =",
-            os.path.exists(
-                "static/avatar/base_avatar.png"
-            )
-        )
-        base = Image.open(
-            "static/avatar/base_avatar.png"
-        ).convert("RGBA")
-
-        print("아바타 크기 =", base.size)
-
-        def paste_item(
-            image_path,
-            x,
-            y,
-            w,
-            h,
-        ):
-            
-            print("입히는 옷 =", image_path)
-            print(
-                "파일 존재 =",
-                os.path.exists(image_path)
-            )
-
-            if not image_path:
-                return
-
-            item = Image.open(
-                image_path
-            ).convert("RGBA")
-
-            bbox = item.getbbox()
-
-            if bbox:
-                item = item.crop(bbox)
-
-            item = item.resize(
-                (w, h)
-            )
-
-            base.paste(
-                item,
-                (x, y),
-                item,
-            )
-
-            print("dress =", dress)
-            print("top =", top)
-            print("bottom =", bottom)
-            print("outer =", outer)
-            print("shoes =", shoes)
-            print("bag =", bag)
-
-        if dress:
-            paste_item(
-                dress,
-                450,
-                300,
-                850,
-                1300,
-            )
-
-        if outer:
-            paste_item(
-                outer,
-                420,
-                250,
-                900,
-                1100,
-            )
-
-        if top:
-            paste_item(
-                top,
-                520,
-                350,
-                700,
-                700,
-            )
-
-        if bottom:
-            paste_item(
-                bottom,
-                500,
-                950,
-                700,
-                800,
-            )
-
-        if shoes:
-            paste_item(
-                shoes,
-                550,
-                2000,
-                450,
-                200,
-            )
-
-        if bag:
-            paste_item(
-                bag,
-                1050,
-                600,
-                280,
-                350,
-            )
-
-        filename = (
-            f"final_{uuid.uuid4()}.png"
-        )
-
-        save_path = os.path.join(
-            "output",
-            filename,
-        )
-
-        base.save(save_path)
-
-        print(
-            "파일 저장 확인 =",
-            os.path.exists(save_path)
-        )
-
-        print(
-            "✅ 저장 완료:",
-            save_path
-        )
-
-        return f"output/{filename}"
-
     except Exception as e:
         print(
             "합성 오류:",
@@ -1810,76 +1659,49 @@ def generate_avatar():
 
 
 # 생성된 AI 아바타에 추천 코디를 적용하여 최종 이미지를 생성하는 API
-@app.route(
-    "/generate-outfit",
-    methods=["POST"]
-)
+@app.route("/generate-outfit", methods=["POST"])
 def generate_outfit():
+    print("🔥 /generate-outfit 호출됨")
 
-    print("🔥 /generate-avatar 호출됨")
-
-    data = request.json
+    data = request.get_json() or {}
 
     avatar_path = data.get("avatar_path")
-
     prompt = data.get("prompt")
+    item_images = data.get("item_images", [])
 
     if not avatar_path:
-
         return jsonify({
-
             "success": False,
-
             "error": "avatar_path 없음"
-
         }), 400
 
     if not prompt:
-
         return jsonify({
-
             "success": False,
-
             "error": "prompt 없음"
-
         }), 400
 
     try:
-
         result = generate_outfit_image(
-
             avatar_path=avatar_path,
-
             prompt=prompt,
-
+            item_images=item_images,
         )
 
-        url = (
-
-            f"{SERVER_URL}/"
-
-            + result.replace("\\", "/")
-
-        )
+        image_url = f"{SERVER_URL}/{result}"
 
         return jsonify({
-
             "success": True,
-
             "image_path": result,
-
-            "image_url": url,
-
+            "image_url": image_url,
         })
 
     except Exception as e:
+        print("❌ 옷 입히기 오류:", e)
 
         return jsonify({
-
             "success": False,
-
             "error": str(e)
-
         }), 500
 
 # =========================================================================

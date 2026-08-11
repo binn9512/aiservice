@@ -15,6 +15,7 @@ import quickPromptData from '../../data/quickPrompts';
 type PromptItem = {
   id: string;
   category: string;
+  label: string;
   text: string;
 };
 
@@ -135,7 +136,7 @@ const QuickPromptSection = ({
                     style={
                       styles.quickPromptText
                     }>
-                    {item.text}
+                    {item.label}
                   </Text>
                 </TouchableOpacity>
 
@@ -251,6 +252,7 @@ const QuickPromptSection = ({
                         {
                           id: Date.now().toString(),
                           category: '사용자',
+                          label: newPrompt,
                           text: `${newPrompt} 추천해줘`,
                         },
                       ],

@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+} from 'react';
+
 import {
   View,
   Text,
@@ -57,6 +62,10 @@ export default function RecommendOutfitDetailScreen() {
   const current = outfits[index];
   const [faceImage, setFaceImage] = useState<string | null>(null);
 
+  const [tryOnImage, setTryOnImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false); 
+  const tryOnStarted = useRef(false);
+
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [lookbookTitle, setLookbookTitle] = useState('');
   const [lookbookMemo, setLookbookMemo] = useState('');
@@ -79,16 +88,6 @@ export default function RecommendOutfitDetailScreen() {
       return [...prev, collection];
     });
   };
-
-  useEffect(() => {
-    const loadFaceImage = async () => {
-      const savedImage = await AsyncStorage.getItem('USER_AVATAR_IMAGE');
-      if (savedImage) {
-        setFaceImage(savedImage);
-      }
-    };
-    loadFaceImage();
-  }, []);
 
   const loadCollections = async () => {
     try {
@@ -342,6 +341,72 @@ export default function RecommendOutfitDetailScreen() {
     );
   }
 
+  const generateTryOn = async () => {
+    if (tryOnStarted.current) {
+      return;
+    }
+
+    tryOnStarted.current = true;
+
+    try {
+      const avatarPath = await AsyncStorage.getItem(
+        'USER_AVATAR_IMAGE'
+      );
+
+      if (!avatarPath || !current) {
+        console.log('❌ 아바타 또는 코디 정보가 없음');
+        return;
+      }
+
+      setFaceImage(avatarPath);
+      setIsGenerating(true);
+
+      const prompt = current.items
+        .map(item => {
+          const category = item.category || '의류';
+
+          return `- ${category}: ${item.name}`;
+        })
+        .join('\n');
+
+      console.log('🔥 아바타 경로:', avatarPath);
+      console.log('🔥 옷 입히기 prompt:', prompt);
+
+      const response = await axios.post(
+        `${API_BASE_URL}/generate-outfit`,
+        {
+          avatar_path: avatarPath,
+          prompt: prompt,
+          item_images: current.items.map(item => ({
+            name: item.name,
+            category: item.category,
+            image: item.image,
+          })),
+        }
+      );
+
+      console.log('🔥 옷 입히기 응답:', response.data);
+      console.log('🔥 최종 tryOn 이미지:', response.data.image_url);
+
+      if (
+        response.data.success &&
+        response.data.image_url
+      ) {
+        setTryOnImage(response.data.image_url.trim());
+      }
+    } catch (error) {
+      console.log('❌ 옷 입히기 오류:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!current) return;
+
+    generateTryOn();
+  }, []);
+
   return (
     <>
       <View style={styles.container}>
@@ -355,19 +420,35 @@ export default function RecommendOutfitDetailScreen() {
         <Text style={styles.outfitTitle}>추천 코디</Text>
 
         <View style={styles.content}>
-          {faceImage ? (
-            <View style={styles.avatarWrapper}>
+          <View style={styles.avatarWrapper}>
+            {isGenerating ? (
+              <View style={styles.loadingAvatar}>
+                <Text style={styles.loadingAvatarText}>
+                  코디를 입히는 중...
+                </Text>
+              </View>
+            ) : tryOnImage ? (
               <Image
-                source={typeof current.modelImage === 'string' ? { uri: current.modelImage } : current.modelImage}
+                source={{ uri: tryOnImage }}
                 style={styles.modelImage}
                 resizeMode="contain"
               />
-            </View>
-          ) : (
-            <View style={styles.emptyAvatar}>
-              <Text style={styles.emptyAvatarText}>AI 아바타</Text>
-            </View>
-          )}
+            ) : faceImage ? (
+              <Image
+                source={{
+                  uri: tryOnImage || `${API_BASE_URL}/${faceImage}`,
+                }}
+                style={styles.modelImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.emptyAvatar}>
+                <Text style={styles.emptyAvatarText}>
+                  AI 아바타
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.itemBox}>
             <Text style={styles.itemTitle}>코디 아이템</Text>
@@ -787,5 +868,20 @@ createCircleButton: {
   justifyContent: 'center',
   alignItems: 'center',
   marginLeft: 10,
+},
+
+loadingAvatar: {
+  width: 160,
+  height: 340,
+  borderRadius: 24,
+  backgroundColor: '#F5F5F5',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+loadingAvatarText: {
+  color: '#FF5C8A',
+  fontSize: 14,
+  fontWeight: '600',
 },
 });

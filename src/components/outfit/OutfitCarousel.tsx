@@ -13,17 +13,11 @@ import {
 
 import OutfitCard from './OutfitCard';
 
-import mockOutfits, {
+import {
   OutfitItem,
-} from '../../data/mockOutfits';
+} from '../../types/outfit';
 
-const { width } = Dimensions.get(
-  'window',
-);
-
-const CARD_WIDTH = width * 0.92;
-
-const SPACING = 12;
+const { width } = Dimensions.get('window');
 
 type Props = {
   recommendedOutfits?: any[];
@@ -33,7 +27,7 @@ type Props = {
 };
 
 const OutfitCarousel = ({
-  recommendedOutfits,
+  recommendedOutfits = [],
   onItemPress,
 }: Props) => {
   const flatListRef =
@@ -49,12 +43,9 @@ const OutfitCarousel = ({
       }: {
         viewableItems: ViewToken[];
       }) => {
-        if (
-          viewableItems.length > 0
-        ) {
+        if (viewableItems.length > 0) {
           setActiveIndex(
-            viewableItems[0]
-              ?.index ?? 0,
+            viewableItems[0]?.index ?? 0,
           );
         }
       },
@@ -64,10 +55,7 @@ const OutfitCarousel = ({
     itemVisiblePercentThreshold: 50,
   }).current;
 
-  if (
-    !recommendedOutfits ||
-    recommendedOutfits.length === 0
-  ) {
+  if (recommendedOutfits.length === 0) {
     return null;
   }
 
@@ -75,42 +63,24 @@ const OutfitCarousel = ({
     <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={recommendedOutfits || []}
+        data={recommendedOutfits}
         horizontal
-        bounces={false}
         pagingEnabled
-
-
-        showsHorizontalScrollIndicator={
-          false
-        }
+        bounces={false}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={
           styles.listContent
         }
-        keyExtractor={item =>
-          item.id
-        }
-        renderItem={({
-          item,
-          index,
-        }) => (
+        keyExtractor={item => item.id}
+        renderItem={({ item, index }) => (
           <OutfitCard
             outfit={item}
-            outfits={
-              recommendedOutfits &&
-                recommendedOutfits.length > 0
-                ? recommendedOutfits
-                : mockOutfits
-            }
+            outfits={recommendedOutfits}
             index={index}
-            onItemPress={
-              onItemPress
-            }
+            onItemPress={onItemPress}
           />
         )}
-        viewabilityConfig={
-          viewConfig
-        }
+        viewabilityConfig={viewConfig}
         onViewableItemsChanged={
           onViewableItemsChanged
         }
@@ -128,7 +98,6 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingTop: 12,
-
     paddingHorizontal: 4,
   },
 });

@@ -7,13 +7,18 @@ import {
   Linking,
 } from 'react-native';
 
+
 import styles from './outfitCard.styles';
-import {
-  Outfit,
-  OutfitItem,
-} from '../../data/mockOutfits';
 
 import { useRouter } from 'expo-router';
+
+import { OutfitItem } from '../../types/outfit';
+
+type Outfit = {
+  id: string;
+  modelImage: any;
+  items: OutfitItem[];
+};
 
 type ExtendedOutfitItem = OutfitItem & {
   is_shop?: boolean;
@@ -65,8 +70,8 @@ const OutfitCard = ({
 
       {/* Item List */}
       <View style={styles.itemSection}>
-        {itemList.map((rawItem, itemIndex) => {
-          const item = rawItem as ExtendedOutfitItem;
+        {itemList.map((rawItem: ExtendedOutfitItem, itemIndex: number) => {
+          const item = rawItem;
 
           // 무신사 상품 여부 판별
           const isShop = item?.is_shop || (typeof item?.id === 'string' && item.id.startsWith('SHOP_'));
