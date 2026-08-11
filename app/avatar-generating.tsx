@@ -7,6 +7,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
+import axios from 'axios';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
+
 // 1️⃣ expo-router import로 교체
 import { useRouter } from 'expo-router';
 
@@ -17,18 +21,66 @@ export default function AvatarGeneratingScreen() {
   useEffect(() => {
     const generateAvatar = async () => {
       try {
-        const faceImage = await AsyncStorage.getItem('USER_FACE_IMAGE');
-        console.log('USER_FACE_IMAGE =', faceImage);
 
-        if (faceImage) {
-          await AsyncStorage.setItem('USER_AVATAR_IMAGE', faceImage);
-          console.log('USER_AVATAR_IMAGE 저장 완료');
+        const faceImage =
+          await AsyncStorage.getItem(
+            'USER_FACE_IMAGE'
+          );
+
+        if (!faceImage) {
+          router.replace('/avatar-result');
+          return;
         }
 
-        // 3️⃣ navigation.replace() ➡️ router.replace('/파일이름')
+        const formData = new FormData();
+
+        formData.append(
+          'photo',
+          {
+            uri: faceImage,
+            type: 'image/png',
+            name: 'face.png',
+          } as any
+        );
+
+        const response = await axios.post(
+
+          `${API_BASE_URL}/generate-avatar`,
+
+          formData,
+
+          {
+            headers: {
+              'Content-Type':
+                'multipart/form-data',
+            },
+          }
+
+        );
+
+        console.log("✅ response =", response.data);
+
+        const result = response.data;
+
+        await AsyncStorage.setItem(
+          'USER_AVATAR_IMAGE',
+          result.avatar_path
+        );
+
+        await AsyncStorage.setItem(
+          'USER_AVATAR_URL',
+          result.avatar_url
+        );
+
         router.replace('/avatar-result');
-      } catch (error) {
-        console.log('❌ avatar error', error);
+
+      } catch (e: any) {
+        console.log("❌ generate-avatar error");
+        console.log(e);
+        console.log(e?.response?.data);
+
+        alert(JSON.stringify(e?.response?.data ?? e));
+
         router.replace('/avatar-result');
       }
     };

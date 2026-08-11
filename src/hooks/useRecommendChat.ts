@@ -102,6 +102,10 @@ const useRecommendChat = () => {
 
     setLoading(true);
     try {
+      const avatarPath = await AsyncStorage.getItem(
+        'USER_AVATAR_IMAGE'
+      );
+
       // 🌟 room_id를 백엔드에 함께 전달
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -109,6 +113,7 @@ const useRecommendChat = () => {
         body: JSON.stringify({
           message: trimmedText,
           room_id: String(currentChatId),
+          avatar_path: avatarPath,
         }),
       });
 

@@ -20,7 +20,10 @@ export default function AvatarResultScreen() {
 
   useEffect(() => {
     const loadImage = async () => {
-      const savedImage = await AsyncStorage.getItem('USER_AVATAR_IMAGE');
+      const savedImage = await AsyncStorage.getItem('USER_AVATAR_URL');
+
+      console.log('USER_AVATAR_URL =', savedImage);
+
       if (savedImage) {
         setFaceImage(savedImage);
       }
@@ -37,6 +40,7 @@ export default function AvatarResultScreen() {
           <Image
             source={{ uri: faceImage }}
             style={styles.avatarImage}
+            resizeMode="contain"
           />
         ) : (
           <Text>얼굴 사진 없음</Text>
@@ -70,5 +74,5 @@ const styles = StyleSheet.create({
   desc: { textAlign: 'center', color: '#666', marginTop: 20, marginVertical: -15 },
   button: { height: 54, borderRadius: 16, backgroundColor: '#FF5C8A', justifyContent: 'center', alignItems: 'center', marginTop: 'auto', marginHorizontal: 20 },
   buttonText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  avatarImage: { width: '100%', height: '100%', borderRadius: 24 },
+  avatarImage: { width: '100%', height: '100%', resizeMode: "contain", borderRadius: 24 },
 });

@@ -14,9 +14,13 @@ from dotenv import load_dotenv
 from PIL import Image
 from datetime import datetime
 import uuid
-from outfit_generator import generate_outfit_image
 from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
 import google_calendar as gc # 👈 google_calendar 모듈 import
+
+from avatar_generator import generate_avatar_image
+from prompt_builder import build_prompt
+from outfit_generator import generate_outfit_image
+
 import os
 import re
 
@@ -676,6 +680,45 @@ def chat_api():
         shoes_info = get_any_item_info(ai_json.get('shoes'))
         bag_info = get_any_item_info(ai_json.get('bag'))
         accessory_info = get_any_item_info(ai_json.get('accessory'))
+
+        # AI 코디 이미지 생성
+        prompt = build_prompt(
+
+            dress=dress_info,
+
+            outer=outer_info,
+
+            top=top_info,
+
+            bottom=bottom_info,
+
+            shoes=shoes_info,
+
+            bag=bag_info,
+
+        )
+
+        avatar_path = user_data.get("avatar_path")
+
+        generated_image = None
+
+        if avatar_path:
+
+            try:
+
+                generated_image = generate_outfit_image(
+
+                    avatar_path=avatar_path,
+
+                    prompt=prompt,
+
+                )
+
+            except Exception as e:
+
+                print("AI Outfit Error")
+
+                print(e)
         
         # 터미널 디버깅용 출력
         print(json.dumps({
@@ -689,8 +732,8 @@ def chat_api():
         }, indent=2, ensure_ascii=False))
 
         # 합성 데모 이미지 생성 함수 호출
-        outfit_image = get_demo_outfit_image(ai_json)
-
+        outfit_image = generated_image
+        
         # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
         def resolve_image_url(info):
             if not info:
@@ -748,8 +791,17 @@ def chat_api():
         # 프론트엔드로 반환할 최종 데이터
         return jsonify({
             "success": True,
-            "message": ai_json.get('message', ai_string_response),
-            "outfit_image": outfit_image,
+            "message": ai_json.get('message'),
+            "outfit_image":
+
+            (
+                f"{SERVER_URL}/"
+                + outfit_image.replace("\\","/")
+            )
+
+            if outfit_image
+
+            else None,
 
             # 개별 이미지 주소 맵
             "images": {
@@ -1723,96 +1775,111 @@ def delete_chat_room():
 # 👤 AI 아바타 생성 API
 # =========================================================================
 
-@app.route('/generate-avatar', methods=['POST'])
+# 사용자의 얼굴 사진을 base_avatar에 합성하여 AI 아바타를 생성하는 API
+@app.route("/generate-avatar", methods=["POST"])
 def generate_avatar():
 
-    if 'photo' not in request.files:
+    if "photo" not in request.files:
         return jsonify({
             "success": False,
-            "error": "사진 없음"
+            "error": "photo is required"
         }), 400
 
-    photo = request.files['photo']
-
     try:
-        image_bytes = photo.read()
 
-        API_URL = (
-            "https://api-inference.huggingface.co/models/"
-            "stabilityai/stable-diffusion-xl-base-1.0"
-        )
+        photo = request.files["photo"]
 
-        headers = {
-            "Authorization": f"Bearer {HF_TOKEN}"
-        }
+        print(photo.filename)
 
-        prompt = """
-        full body korean woman,
-        fashion model,
-        standing pose,
-        clean white background,
-        realistic,
-        soft lighting,
-        fashion avatar
-        """
+        avatar_path = generate_avatar_image(photo)
 
-        print("🔥 avatar request start")
-
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json={
-                "inputs": prompt
-            },
-            timeout=120
-        )
-
-        print("STATUS =", response.status_code)
-        print("TEXT =", response.text[:500])
-
-        if response.status_code != 200:
-            return jsonify({
-                "success": False,
-                "error": response.text
-            }), 500
-
-        os.makedirs(
-            "output",
-            exist_ok=True
-        )
-
-        avatar_filename = (
-            f"avatar_{photo.filename}.png"
-        )
-
-        avatar_path = os.path.join(
-            "output",
-            avatar_filename
-        )
-
-        image = Image.open(
-            BytesIO(response.content)
-        )
-
-        image.save(
-            avatar_path
-        )
+        avatar_url = f"{SERVER_URL}/{avatar_path}"
 
         return jsonify({
             "success": True,
-            "avatar_url":
-            f"{SERVER_URL}/output/{avatar_filename}"
+            "avatar_path": avatar_path,
+            "avatar_url": avatar_url
         })
 
     except Exception as e:
-        import traceback
-
-        print("\n❌ AVATAR ERROR ❌")
-        traceback.print_exc()
 
         return jsonify({
             "success": False,
             "error": str(e)
+        }), 500
+
+
+# 생성된 AI 아바타에 추천 코디를 적용하여 최종 이미지를 생성하는 API
+@app.route(
+    "/generate-outfit",
+    methods=["POST"]
+)
+def generate_outfit():
+
+    print("🔥 /generate-avatar 호출됨")
+
+    data = request.json
+
+    avatar_path = data.get("avatar_path")
+
+    prompt = data.get("prompt")
+
+    if not avatar_path:
+
+        return jsonify({
+
+            "success": False,
+
+            "error": "avatar_path 없음"
+
+        }), 400
+
+    if not prompt:
+
+        return jsonify({
+
+            "success": False,
+
+            "error": "prompt 없음"
+
+        }), 400
+
+    try:
+
+        result = generate_outfit_image(
+
+            avatar_path=avatar_path,
+
+            prompt=prompt,
+
+        )
+
+        url = (
+
+            f"{SERVER_URL}/"
+
+            + result.replace("\\", "/")
+
+        )
+
+        return jsonify({
+
+            "success": True,
+
+            "image_path": result,
+
+            "image_url": url,
+
+        })
+
+    except Exception as e:
+
+        return jsonify({
+
+            "success": False,
+
+            "error": str(e)
+
         }), 500
 
 # =========================================================================
