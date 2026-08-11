@@ -6,7 +6,7 @@ import json
 import os
 from dotenv import load_dotenv
 from weather import get_today_weather_and_outfit
-
+from datetime import datetime
 
 
 import sqlite3
@@ -64,6 +64,31 @@ def get_closet_data():
         return ", ".join(items)
     except Exception as e:
         return f"DB 읽기 오류: {e}"
+# 1. 🌟 함수 추가 (chat_with_closet 함수 바로 위에 위치)
+def get_today_schedules_text():
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    conn = sqlite3.connect('codi_v2.db')
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "SELECT title, tpo_tag FROM schedules WHERE event_date = ?", 
+            (today_str,)
+        )
+        rows = cursor.fetchall()
+    except Exception as e:
+        print(f"⚠️ 일정 DB 조회 에러: {e}")
+        rows = []
+    finally:
+        conn.close()
+
+    # 🌟 일정이 없을 때는 None 반환
+    if not rows:
+        return None
+
+    # 일정이 있을 때는 일정 목록 문자열 반환
+    schedules = [f"{r[0]} ({r[1]})" for r in rows]
+    return ", ".join(schedules)
 
 # 2. 함수가 '방 번호(room_id)'도 같이 받도록 수정합니다.
 def chat_with_closet(user_msg, room_id="default"):
@@ -76,6 +101,8 @@ def chat_with_closet(user_msg, room_id="default"):
     # 이제 이 방 전용 기억장치를 불러옵니다.
     room_history = chat_history[room_id]
     my_items = get_closet_data()
+    # 오늘 일정 텍스트 가져오기
+    today_schedule_info = get_today_schedules_text()
 
     # 현재 날씨 조회
     weather_info = get_today_weather_and_outfit(
@@ -96,13 +123,16 @@ def chat_with_closet(user_msg, room_id="default"):
 
     # 2. 💡 [추가] 무신사 쇼핑몰 데이터 가져오기!
     musinsa_clothes = get_musinsa_clothes_text()
-
+  
     
     system_prompt = f"""
     너는 한국의 2030 세대 패션 스타일링 전문가야.
 
     [현재 날씨]
     {weather_text}
+
+    [오늘 일정]
+    {today_schedule_info}
 
     [내 옷장 데이터]
     {my_items}
@@ -131,8 +161,8 @@ def chat_with_closet(user_msg, room_id="default"):
    - shoes: 신발(운동화, 구두, 로퍼, 샌들 등) 👈 절대 옷이나 가방을 넣지 마세요!
    - bag: 가방(백팩, 크로스백, 숄더백 등)
    - accessory: 모자, 주얼리, 머플러 등
-
-2. 절대 같은 카테고리의 아이템을 다른 카테고리 슬롯에 중복으로 넣지 마세요.
+3. 쇼핑몰 옷 포함 여부 밝히지 않았을때는 어떤 경우는 무조건 **"내 옷장에 있는 옷으로만 추천해 드릴까요, 아니면 쇼핑몰 옷도 함께 추천해 드릴까요?"**를 물어봐야함
+4. 절대 같은 카테고리의 아이템을 다른 카테고리 슬롯에 중복으로 넣지 마세요.
    (예: shoes에 집업을 넣거나, accessory에 가방을 넣는 행위 금지)
     [★ 추천 출처 및 ID 부여 규칙 - 매우 중요 ★]
     1. 내 옷장 데이터의 옷을 추천할 때는 ID 앞에 반드시 'MY_'를 붙여라. (예: MY_1, MY_4, MY_12)

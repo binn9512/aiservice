@@ -12,6 +12,7 @@ from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
 from PIL import Image
+from datetime import datetime
 import uuid
 from outfit_generator import generate_outfit_image
 from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
@@ -525,6 +526,69 @@ def get_any_item_info(item_code):
             info["product_url"] = None
             info["buy_url"] = None
         return info
+
+from datetime import datetime
+import sqlite3
+
+# -------------------------------------------------------------
+# 📅 오늘 일정 조회 보조 함수 (chat_api 위에 위치해야 함)
+# -------------------------------------------------------------
+def get_today_schedules_text():
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    conn = sqlite3.connect('codi_v2.db')
+    cursor = conn.cursor()
+    
+    try:
+        # schedules 테이블이 없을 경우 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute(
+            "SELECT title, tpo_tag FROM schedules WHERE event_date = ?", 
+            (today_str,)
+        )
+        rows = cursor.fetchall()
+    except Exception as e:
+        print(f"⚠️ 일정 DB 조회 중 에러: {e}")
+        rows = []
+    finally:
+        conn.close()
+
+    if not rows:
+        return None
+
+    schedules = [f"{r[0]} ({r[1]})" for r in rows]
+    return ", ".join(schedules)
+
+# 🌟 [여기 추가!] 채팅방 첫 진입 시 첫 인사 메시지 반환 API
+# -------------------------------------------------------------
+@app.route('/chat/welcome', methods=['GET'])
+def get_chat_welcome():
+    today_schedule = get_today_schedules_text()
+
+    if today_schedule:
+        # 오늘 일정이 있을 때
+        welcome_msg = f"안녕하세요! 오늘은 [{today_schedule}] 일정이 있으시네요. 오늘 일정에 딱 맞는 멋진 TPO 코디를 추천해 드릴까요?"
+    else:
+        # 오늘 일정이 없을 때 (기존)
+        welcome_msg = "안녕하세요! 오늘 어떤 코디를 추천해 드릴까요?"
+
+    return jsonify({
+        "success": True,
+        "message": welcome_msg
+    })
+
+# -------------------------------------------------------------
+# 💬 채팅 API
+# -------------------------------------------------------------
+
     
 # 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
@@ -535,25 +599,14 @@ def chat_api():
     # 🌟 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
     room_id = user_data.get('room_id', 'default')
 
-    # 🌟 [구글 캘린더 추가 영역] 일정 기반 코디 요청인지 먼저 판별
-    calendar_intent = detect_calendar_intent(user_message, room_id)
-    if calendar_intent:
-        schedule_result = generate_schedule_outfit_response(user_message, room_id)
-        return jsonify({
-            "success": True,
-            "message": schedule_result["assistantMessage"],
-            "outfit_image": None,
-            "images": {},
-            "items": {},
-            "intent": schedule_result["intent"],
-            "calendarConnected": schedule_result["calendarConnected"],
-            "dateLabel": schedule_result["dateLabel"],
-            "events": schedule_result["events"],
-            "needsClarification": schedule_result["needsClarification"],
-            "clarifyingQuestion": schedule_result["clarifyingQuestion"],
-            "suggestedActions": schedule_result["suggestedActions"],
-            "transitionPlan": schedule_result["transitionPlan"],
-        })
+    # ✅ 자체 SQLite 스케줄러에서 오늘 일정 조회 (일정이 없으면 None 반환)
+    today_schedule = get_today_schedules_text()
+
+# 오늘 일정 유무에 따라 프롬프트 컨텍스트 생성
+    if today_schedule:
+        schedule_context = f"사용자에게 오늘 '{today_schedule}' 일정이 있습니다. 응답 message 첫 문장에 '오늘 {today_schedule} 일정이 있으시네요!'를 언급하며 어울리는 TPO 코디를 추천하세요."
+    else:
+        schedule_context = "오늘 특별히 등록된 일정이 없습니다. 사용자의 요청에 맞춘 데일리 코디를 추천하세요."
     
     # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
     try:
@@ -721,6 +774,8 @@ def chat_api():
             "images": {},
             "items": {}
         })
+
+
 # =========================================================================
 # 👗 5. 옷장(Closet) 및 코디 저장 관리 API
 # =========================================================================
@@ -1889,6 +1944,112 @@ def chat_schedule_outfit():
     result["success"] = True
     return jsonify(result)
 
+
+import sqlite3
+from flask import request, jsonify
+
+@app.route('/schedule', methods=['POST'])
+def add_schedule():
+    try:
+        data = request.json or {}
+        title = data.get('title')
+        event_date = data.get('event_date')
+        tpo_tag = data.get('tpo_tag', 'Casual')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "제목과 날짜를 지정해 주세요."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # schedules 테이블이 없을 경우를 대비해 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute(
+            "INSERT INTO schedules (title, event_date, tpo_tag) VALUES (?, ?, ?)",
+            (title, event_date, tpo_tag)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 성공적으로 등록되었습니다."})
+
+    except Exception as e:
+        print(f"❌ /schedule 라우트 에러: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# -------------------------------------------------------------
+# 📅 등록된 모든 일정 목록 조회 API (캘린더 복원용)
+# -------------------------------------------------------------
+@app.route('/schedules', methods=['GET'])
+def get_all_schedules():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 테이블이 없는 경우 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 저장된 모든 일정 가져오기
+        cursor.execute("SELECT title, event_date, tpo_tag FROM schedules")
+        rows = cursor.fetchall()
+        conn.close()
+
+        schedules_list = [
+            {"title": r[0], "event_date": r[1], "tpo_tag": r[2]} 
+            for r in rows
+        ]
+
+        return jsonify({"success": True, "schedules": schedules_list})
+
+    except Exception as e:
+        print(f"❌ 전체 일정 조회 에러: {e}")
+        return jsonify({"success": False, "schedules": []}), 500
+
+# -------------------------------------------------------------
+# 🗑️ 일정 삭제 API
+# -------------------------------------------------------------
+@app.route('/schedule', methods=['DELETE'])
+def delete_schedule():
+    try:
+        data = request.json
+        title = data.get('title')
+        event_date = data.get('event_date')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "삭제할 일정을 찾을 수 없습니다."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 해당 제목과 날짜가 일치하는 일정 삭제
+        cursor.execute(
+            "DELETE FROM schedules WHERE title = ? AND event_date = ?",
+            (title, event_date)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 삭제되었습니다."})
+    except Exception as e:
+        print(f"❌ 일정 삭제 에러: {e}")
+        return jsonify({"success": False, "message": "삭제 중 오류 발생"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
