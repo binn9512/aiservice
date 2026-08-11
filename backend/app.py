@@ -907,7 +907,13 @@ def save_outfit():
 
     title = data.get("title", "")
     memo = data.get("memo", "")
-    outfit_json = json.dumps(data.get("images", {}))
+    outfit_json = json.dumps({
+        "outfit_image": data.get("outfit_image"),
+        "images": data.get("images", {})
+    })
+
+    print("🔥 저장할 코디 이미지 ID:", data.get("images", {}))
+    print("🔥 저장할 코디 이미지 JSON:", outfit_json)
     
     try:
         conn = sqlite3.connect('codi_v2.db')
@@ -1073,15 +1079,43 @@ def get_collection_outfits(collection_id):
                 "saved_id": row[0],
                 "title": row[1],
                 "memo": row[2],
-                "created_at": row[3],   # 추가
+                "created_at": row[3],
+                "outfit_image": images.get("outfit_image"),
                 "items": {
-                    "top": get_any_item_info(images.get("top")),
-                    "bottom": get_any_item_info(images.get("bottom")),
-                    "dress": get_any_item_info(images.get("dress")),
-                    "outer": get_any_item_info(images.get("outer")),
-                    "shoes": get_any_item_info(images.get("shoes")),
-                    "bag": get_any_item_info(images.get("bag")),
-                    "accessory": get_any_item_info(images.get("accessory")),
+                    "top": {
+                        "image": images.get("images", {}).get("top"),
+                        "name": "상의",
+                    } if images.get("images", {}).get("top") else None,
+
+                    "bottom": {
+                        "image": images.get("images", {}).get("bottom"),
+                        "name": "하의",
+                    } if images.get("images", {}).get("bottom") else None,
+
+                    "dress": {
+                        "image": images.get("images", {}).get("dress"),
+                        "name": "원피스",
+                    } if images.get("images", {}).get("dress") else None,
+
+                    "outer": {
+                        "image": images.get("images", {}).get("outer"),
+                        "name": "아우터",
+                    } if images.get("images", {}).get("outer") else None,
+
+                    "shoes": {
+                        "image": images.get("images", {}).get("shoes"),
+                        "name": "신발",
+                    } if images.get("images", {}).get("shoes") else None,
+
+                    "bag": {
+                        "image": images.get("images", {}).get("bag"),
+                        "name": "가방",
+                    } if images.get("images", {}).get("bag") else None,
+
+                    "accessory": {
+                        "image": images.get("images", {}).get("accessory"),
+                        "name": "액세서리",
+                    } if images.get("images", {}).get("accessory") else None,
                 }
             })
 

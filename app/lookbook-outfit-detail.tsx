@@ -84,6 +84,8 @@ export default function LookbookOutfitDetailScreen() {
             String(item.saved_id) === String(savedId)
         );
 
+        console.log('🔥 룩북 상세 found:', found);
+
         if (found) {
           setCurrent(found);
         }
@@ -371,7 +373,8 @@ export default function LookbookOutfitDetailScreen() {
     `${String(date.getDate()).padStart(2, '0')}`;
 
   const outfitImage =
-  items.length > 0 ? (items[0] as any).image : undefined;
+    (current as any).outfit_image ||
+    (items.length > 0 ? (items[0] as any).image : undefined);
 
   return (
     <>
@@ -520,35 +523,52 @@ export default function LookbookOutfitDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.imageSection}>
-        <Image
-          source={{ uri: outfitImage }}
-          style={styles.outfitImage}
-        />
+      <View style={styles.content}>
+        <View style={styles.avatarWrapper}>
+          <Image
+            source={{ uri: outfitImage }}
+            style={styles.modelImage}
+            resizeMode="cover"
+          />
+        </View>
 
-        <View style={styles.itemCard}>
-          <Text style={styles.itemTitle}>
-            코디 아이템
-          </Text>
+        <View style={styles.itemBox}>
+          <Text style={styles.itemTitle}>코디 아이템</Text>
 
-          {items.map((item: any) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.itemRow}
-            >
-              <Image
-                source={{ uri: item.image }}
-                style={styles.itemImage}
-              />
-
-              <Text
-                numberOfLines={1}
-                style={styles.itemName}
+          <View style={styles.itemsContainer}>
+            {items.map((item: any, idx: number) => (
+              <TouchableOpacity
+                key={item.id ?? `${item.category}-${idx}`}
+                activeOpacity={0.8}
+                style={styles.itemRow}
               >
-                {item.name || item.category}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Image
+                  source={
+                    typeof item.image === 'string'
+                      ? { uri: item.image }
+                      : item.image
+                  }
+                  style={styles.itemImage}
+                  resizeMode="contain"
+                />
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={styles.itemName}
+                  >
+                    {item.name}
+                  </Text>
+
+                  <Text style={styles.itemSub}>
+                    {item.type === 'closet' || item.is_shop === false
+                      ? '내 옷장'
+                      : '추천 상품'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -614,53 +634,75 @@ const styles = StyleSheet.create({
     color: '#111',
   },
 
-  imageSection: {
+  content: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
   },
 
-  outfitImage: {
-    width: 230,
+  avatarWrapper: {
+    width: 200,
     height: 340,
-    borderRadius: 18,
-    backgroundColor: '#F3F3F3',
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  itemCard: {
-    flex: 1,
-    marginLeft: 14,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+  modelImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    resizeMode: 'contain',
+  },
+
+  itemBox: {
+    width: 160,
+    height: 340,
+    marginLeft: 18,
     borderWidth: 1,
-    borderColor: '#ECECEC',
+    borderColor: '#F1D8E1',
+    borderRadius: 20,
     padding: 12,
   },
 
   itemTitle: {
-    fontSize: 14,
+    color: '#FF5C8A',
     fontWeight: '700',
-    marginBottom: 12,
-    color: '#111',
+    fontSize: 15,
+    marginBottom: 14,
+    marginLeft: 2,
   },
 
   itemRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
 
   itemImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+
+  itemsContainer: {
+    flex: 1,
+    justifyContent: 'space-evenly',
   },
 
   itemName: {
-    marginTop: 6,
     fontSize: 12,
-    color: '#555',
-    textAlign: 'center',
+    fontWeight: '600',
+    color: '#111',
+  },
+
+  itemSub: {
+    fontSize: 11,
+    color: '#777',
+    marginTop: 2,
   },
 
   infoBox: {

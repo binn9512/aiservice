@@ -159,11 +159,15 @@ const useRecommendChat = () => {
         ].filter(Boolean);
 
         const items = rawItems.map((item: any) => ({
-          id: String(item.id),
+          id: String(item.id ?? item.clothes_id ?? ''),
+          clothes_id: item.clothes_id ?? item.id ?? null,
           name: item.name || item.category,
+          category: item.category,
           image: resolveImageUrl(item.image),
           type: item.is_shop ? 'shop' : 'closet',
-          tags: item.style ? item.style.split(',').map((tag: string) => tag.trim()) : [],
+          tags: item.style
+            ? item.style.split(',').map((tag: string) => tag.trim())
+            : [],
           is_shop: item.is_shop || false,
           buy_url: item.buy_url || '',
           brand: item.brand || '',
