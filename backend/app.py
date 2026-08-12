@@ -7,6 +7,46 @@ import json
 from weather import get_today_weather_and_outfit
 from flask import send_from_directory
 from chatbot_part import chat_with_closet  # 우리가 구체화한 챗봇 함수
+<<<<<<< Updated upstream
+=======
+import requests
+from PIL import Image
+from io import BytesIO
+from dotenv import load_dotenv
+from PIL import Image
+from datetime import datetime
+import uuid
+from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
+import google_calendar as gc # 👈 google_calendar 모듈 import
+
+from avatar_generator import generate_avatar_image
+from prompt_builder import build_prompt
+from outfit_generator import generate_outfit_image
+
+import os
+import re
+
+import google_calendar as gcal
+
+
+print("=== APP START ===")
+print("현재 작업 폴더:", os.getcwd())
+print("DB 절대경로:", os.path.abspath("codi_v2.db"))
+
+conn = sqlite3.connect("codi_v2.db")
+cursor = conn.cursor()
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("현재 DB 테이블:", cursor.fetchall())
+conn.close()
+
+load_dotenv()
+
+SERVER_URL = os.getenv("SERVER_URL")
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+print("HF TOKEN =", HF_TOKEN)
+>>>>>>> Stashed changes
 
 app = Flask(__name__)
 CORS(app)  # 다른 도메인(앱 등)에서 접근할 수 있게 허용
@@ -351,5 +391,330 @@ def delete_chat_room():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+<<<<<<< Updated upstream
+=======
+# =========================================================================
+# 👤 AI 아바타 생성 API
+# =========================================================================
+
+# 사용자의 얼굴 사진을 base_avatar에 합성하여 AI 아바타를 생성하는 API
+@app.route("/generate-avatar", methods=["POST"])
+def generate_avatar():
+
+    if "photo" not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "photo is required"
+        }), 400
+
+    try:
+
+        photo = request.files["photo"]
+
+        print(photo.filename)
+
+        avatar_path = generate_avatar_image(photo)
+
+        # 상대 경로 처리 및 URL 조합 (슬래시 중복 방지)
+        clean_path = str(avatar_path).lstrip("/")
+        avatar_url = f"{SERVER_URL}/{clean_path}"
+
+        return jsonify({
+            "success": True,
+            "avatar_path": avatar_path,
+            "avatar_url": avatar_url
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# 생성된 AI 아바타에 추천 코디를 적용하여 최종 이미지를 생성하는 API
+@app.route("/generate-outfit", methods=["POST"])
+def generate_outfit():
+    print("🔥 /generate-outfit 호출됨")
+
+    data = request.get_json() or {}
+
+    avatar_path = data.get("avatar_path")
+    prompt = data.get("prompt")
+    item_images = data.get("item_images", [])
+
+    if not avatar_path:
+        return jsonify({
+            "success": False,
+            "error": "avatar_path 없음"
+        }), 400
+
+    if not prompt:
+        return jsonify({
+            "success": False,
+            "error": "prompt 없음"
+        }), 400
+
+    try:
+        result = generate_outfit_image(
+            avatar_path=avatar_path,
+            prompt=prompt,
+            item_images=item_images,
+        )
+
+        image_url = f"{SERVER_URL}/{result}"
+
+        return jsonify({
+            "success": True,
+            "image_path": result,
+            "image_url": image_url,
+        })
+
+    except Exception as e:
+        print("❌ 옷 입히기 오류:", e)
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# =========================================================================
+# 📅 Google Calendar 연동 API
+# =========================================================================
+# 1️⃣ [추가] 웹뷰 연동 시작점: 프론트엔드 웹뷰가 이 URL을 호출하면 구글 로그인 페이지로 이동
+@app.route('/api/calendar/login', methods=['GET'])
+def calendar_login():
+    return redirect(gc.get_google_auth_url())
+
+
+# 2️⃣ [추가] 구글 OAuth 콜백: 구글 로그인 완료 후 토큰을 받아 DB에 저장
+@app.route('/api/calendar/authS/callback', methods=['GET'])
+def calendar_callback():
+    code = request.args.get('code')
+    error = request.args.get('error')
+
+    if error or not code:
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: false }));
+            }
+        </script><h3>로그인이 취소되었습니다. 창을 닫아주세요.</h3></body></html>
+        """
+
+    try:
+        # 구글 서버에서 토큰 교환
+        tokens = gc.exchange_code_for_tokens(code)
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token")
+        expires_in = tokens.get("expires_in", 3600)
+
+        # 사용자 이메일 가져온 뒤 DB 저장
+        email = gc.get_user_email(access_token)
+        gc.save_account(access_token, refresh_token, expires_in, email)
+
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: true }));
+            }
+        </script><h3>구글 캘린더 연동 성공! 이 창을 닫아주세요.</h3></body></html>
+        """
+    except Exception as e:
+        return f"<h3>연동 실패: {str(e)}</h3>"
+
+# 1) 캘린더 연결 상태 확인 API
+@app.route('/api/calendar/status', methods=['GET'])
+def calendar_status():
+    account = gcal.get_account()
+    return jsonify({
+        "connected": account is not None,
+        "email": account.get("email") if account else None,
+    })
+
+
+# 2) 구글 OAuth 로그인 인증 토큰 교환 API
+@app.route('/api/calendar/auth/google', methods=['POST'])
+def calendar_auth_google():
+    data = request.json or {}
+    code = data.get('code')
+    redirect_uri = data.get('redirectUri')
+    code_verifier = data.get('codeVerifier')
+
+    if not code or not redirect_uri:
+        return jsonify({"success": False, "error": "code와 redirectUri가 필요합니다."}), 400
+
+    try:
+        tokens = gcal.exchange_code_for_tokens(code, redirect_uri, code_verifier)
+        email = gcal.get_user_email(tokens['access_token'])
+        gcal.save_account(
+            access_token=tokens['access_token'],
+            refresh_token=tokens.get('refresh_token'),
+            expires_in=tokens.get('expires_in'),
+            email=email,
+        )
+        return jsonify({"success": True, "email": email})
+    except gcal.GoogleCalendarError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"캘린더 연결 중 오류가 발생했습니다: {e}"}), 500
+
+
+# 3) 캘린더 연동 해제 API
+@app.route('/api/calendar/disconnect', methods=['POST'])
+def calendar_disconnect():
+    try:
+        gcal.delete_account()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# 4) 기간별 일정 목록 가져오기 API
+@app.route('/api/calendar/events', methods=['GET'])
+def calendar_events():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    if not start or not end:
+        return jsonify({"success": False, "error": "start와 end가 필요합니다."}), 400
+
+    try:
+        access_token = gcal.get_valid_access_token()
+    except gcal.GoogleCalendarError:
+        access_token = None
+
+    if not access_token:
+        return jsonify({"success": False, "error": "캘린더가 연결되어 있지 않습니다."}), 401
+
+    try:
+        events = gcal.list_events(access_token, start, end)
+        return jsonify({"success": True, "events": events})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"일정을 불러오지 못했습니다: {e}"}), 502
+
+
+# 5) 일정 기반 코디 전용 단독 요청 API
+@app.route('/api/chat/schedule-outfit', methods=['POST'])
+def chat_schedule_outfit():
+    data = request.json or {}
+    message = data.get('message', '')
+    room_id = data.get('room_id', 'default')
+
+    if not message:
+        return jsonify({"success": False, "error": "message가 필요합니다."}), 400
+
+    result = generate_schedule_outfit_response(message, room_id)
+    result["success"] = True
+    return jsonify(result)
+
+
+import sqlite3
+from flask import request, jsonify
+
+@app.route('/schedule', methods=['POST'])
+def add_schedule():
+    try:
+        data = request.json or {}
+        title = data.get('title')
+        event_date = data.get('event_date')
+        tpo_tag = data.get('tpo_tag', 'Casual')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "제목과 날짜를 지정해 주세요."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # schedules 테이블이 없을 경우를 대비해 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute(
+            "INSERT INTO schedules (title, event_date, tpo_tag) VALUES (?, ?, ?)",
+            (title, event_date, tpo_tag)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 성공적으로 등록되었습니다."})
+
+    except Exception as e:
+        print(f"❌ /schedule 라우트 에러: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# -------------------------------------------------------------
+# 📅 등록된 모든 일정 목록 조회 API (캘린더 복원용)
+# -------------------------------------------------------------
+@app.route('/schedules', methods=['GET'])
+def get_all_schedules():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 테이블이 없는 경우 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 저장된 모든 일정 가져오기
+        cursor.execute("SELECT title, event_date, tpo_tag FROM schedules")
+        rows = cursor.fetchall()
+        conn.close()
+
+        schedules_list = [
+            {"title": r[0], "event_date": r[1], "tpo_tag": r[2]} 
+            for r in rows
+        ]
+
+        return jsonify({"success": True, "schedules": schedules_list})
+
+    except Exception as e:
+        print(f"❌ 전체 일정 조회 에러: {e}")
+        return jsonify({"success": False, "schedules": []}), 500
+
+# -------------------------------------------------------------
+# 🗑️ 일정 삭제 API
+# -------------------------------------------------------------
+@app.route('/schedule', methods=['DELETE'])
+def delete_schedule():
+    try:
+        data = request.json
+        title = data.get('title')
+        event_date = data.get('event_date')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "삭제할 일정을 찾을 수 없습니다."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 해당 제목과 날짜가 일치하는 일정 삭제
+        cursor.execute(
+            "DELETE FROM schedules WHERE title = ? AND event_date = ?",
+            (title, event_date)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 삭제되었습니다."})
+    except Exception as e:
+        print(f"❌ 일정 삭제 에러: {e}")
+        return jsonify({"success": False, "message": "삭제 중 오류 발생"}), 500
+
+>>>>>>> Stashed changes
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
