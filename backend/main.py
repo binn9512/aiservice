@@ -1,5 +1,5 @@
 from vision_part import analyze_style
-import db_test
+import db_test as db_test
 
 def process_and_save(user_id, image_path):
 
@@ -10,9 +10,10 @@ def process_and_save(user_id, image_path):
 if __name__ == "__main__":
     db_test.init_db()
     db_test.load_csv_to_db()
-    process_and_save("user1", "blouse2.png")
+    process_and_save("user1", "blouse.png")
     process_and_save("user1", "pant.png")
-    process_and_save("user1", "skirt.png")
+    process_and_save("user1", "원피스.png")
+    #process_and_save("user1", "greenblouse.png")
     db_test.check_data()
     # # 이미지 경로를 여기에 입력하세요
     # image_path = "jacket.png" 

@@ -4,115 +4,2002 @@ import main  # 사진 분석용 main.py
 import os
 import sqlite3
 import json
+from weather import get_today_weather_and_outfit
+from flask import send_from_directory
 from chatbot_part import chat_with_closet  # 우리가 구체화한 챗봇 함수
+import requests
+from PIL import Image
+from io import BytesIO
+from dotenv import load_dotenv
+from PIL import Image
+from datetime import datetime
+import uuid
+from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확인!
+import google_calendar as gc # 👈 google_calendar 모듈 import
+
+from avatar_generator import generate_avatar_image
+from outfit_generator import generate_outfit_image
+
+import os
+import re
+
+import google_calendar as gcal
+from calendar_outfit import detect_calendar_intent, generate_schedule_outfit_response
+
+print("=== APP START ===")
+print("현재 작업 폴더:", os.getcwd())
+print("DB 절대경로:", os.path.abspath("codi_v2.db"))
+
+conn = sqlite3.connect("codi_v2.db")
+cursor = conn.cursor()
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("현재 DB 테이블:", cursor.fetchall())
+conn.close()
+
+load_dotenv()
+
+SERVER_URL = os.getenv("SERVER_URL")
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+print("HF TOKEN =", HF_TOKEN)
 
 app = Flask(__name__)
 CORS(app)  # 다른 도메인(앱 등)에서 접근할 수 있게 허용
 
-# 🏠 1. [추가] 사용자가 처음 웹사이트(http://127.0.0.1:5000)에 접속했을 때 화면 띄우기
+# =========================================================================
+# 🏠 1. 기본 페이지 및 미디어 서빙 라우트
+# =========================================================================
+
+# 사용자가 처음 웹사이트(http://127.0.0.1:5000)에 접속했을 때 화면 띄우기
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# 분석 후 생성된 이미지 서빙 라우트
+@app.route('/output/<path:filename>')
+def serve_output_image(filename):
+    return send_from_directory(
+        'output',
+        filename
+    )
 
-# 📸 2. [기존 유지] 앱/웹에서 사진 주소를 받아 분석하고 DB에 등록하는 라우트
+
+# =========================================================================
+# 🌤 2. 날씨 정보 API
+# =========================================================================
+
+# 오늘 날씨와 추천 옷차림 정보를 가져오는 API
+@app.route('/weather', methods=['GET'])
+def get_weather():
+    API_KEY = "e62c1806eb7b13df76cbdfb855dff027"
+    weather_info = get_today_weather_and_outfit(API_KEY)
+
+    if weather_info:
+        return jsonify(weather_info)
+
+    return jsonify({
+        "error": "날씨 정보를 가져오지 못했습니다."
+    }), 500
+
+
+# =========================================================================
+# 📸 3. 이미지 분석 및 등록 API
+# =========================================================================
+
+# 앱/웹에서 사진 주소를 받아 분석하고 DB에 등록하는 라우트
 @app.route('/analyze', methods=['POST'])
 def analyze_image():
-    data = request.json
-    user_id = data.get('user_id')
-    image_path = data.get('image_path')
-
-    if not user_id or not image_path:
-        return jsonify({"error": "데이터가 부족합니다."}), 400
-
-    try:
-        # 기존 main.py의 분석 및 저장 로직 호출
-        path, cat, st, col = main.process_and_save(user_id, image_path)
-        
+    if 'photo' not in request.files:
         return jsonify({
-            "status": "success",
-            "category": cat,
-            "style": st,
-            "color": col,
-            "image_url": path
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            "success": False,
+            "error": "사진 파일이 없습니다."
+        }), 400
 
+    photo = request.files['photo']
+    user_id = request.form.get('user_id', 'user1')
 
-# 🔍 3. [추가] 옷 ID 숫자를 주면 DB에서 '진짜 이미지 경로'를 찾아오는 도우미 함수
-def get_image_path_by_id(clothing_id):
-    if not clothing_id or clothing_id == "null" or clothing_id == "":
-        return None
-        
     try:
-        conn = sqlite3.connect('codi_ai.db')
+        os.makedirs('uploads', exist_ok=True)
+        save_path = os.path.join('uploads', photo.filename)
+        photo.save(save_path)
+
+        path, cat, st, col = main.process_and_save(user_id, save_path)
+
+        return jsonify({
+            "success": True,
+            "item": {
+                "id": path,
+                "image": path,
+                "category": cat,
+                "style": st,
+                "color": col
+            }
+        })
+
+    except Exception as e:
+        import traceback
+
+        print("❌ AVATAR ERROR:")
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# =========================================================================
+# 💬 4. AI 챗봇 및 코디 추천 API
+# =========================================================================
+
+# 옷 ID를 기반으로 DB에서 실제 이미지 경로를 찾아주는 내부 도우미 함수
+def get_image_path_by_id(item_id):
+    try:
+        import os
+        import sqlite3
+
+        print("현재 작업 폴더:", os.getcwd())
+        print("DB 절대경로:", os.path.abspath("codi_v2.db"))
+
+        conn = sqlite3.connect("codi_v2.db")
         cursor = conn.cursor()
-        
-        # 🔴 중요: 아까 성공했던 테이블과 컬럼 구조(clothes_id)에 맞춰 조회합니다.
-        cursor.execute("SELECT processed_image FROM clothes WHERE clothes_id = ?", (clothing_id,))
+
+        cursor.execute(
+            "SELECT processed_image FROM clothes WHERE clothes_id = ?",
+            (item_id,)
+        )
+
         row = cursor.fetchone()
         conn.close()
-        
+
         if row and row[0]:
-            return row[0]  # 예: 'output/blouse_no_bg.png' 같은 경로 반환
+            clean_path = str(row[0]).replace("\\", "/").strip()
+
+            if not clean_path.startswith("http"):
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
+
+                return f"{SERVER_URL}{clean_path}"
+
+            return clean_path
+
         return None
+
     except Exception as e:
         print(f"❌ DB 이미지 경로 조회 오류: {e}")
         return None
+    
+# 옷 입히기 데모 이미지를 불러오는 함수
+def get_demo_outfit_image(ai_json):
+
+    style_text = (
+        ai_json.get("message", "")
+    )
+
+    if "출근" in style_text:
+        return "static/demo_outfits/office.png"
+
+    if "데이트" in style_text:
+        return "static/demo_outfits/date.png"
+
+    if "캐주얼" in style_text:
+        return "static/demo_outfits/casual.png"
+
+    if "페미닌" in style_text:
+        return "static/demo_outfits/feminine.png"
+
+    return "static/demo_outfits/minimal.png"
+    
+
+# 옷 ID를 기반으로 실제 옷 정보를 조회하는 내부 도우미 함수
 
 
-# 💬 4. [추가] 사용자와 챗봇이 대화하고 사진 주소까지 연동해주는 라우트
+def extract_id(val):
+    if not val or val == "null" or val is None:
+        return None
+    # "ID:4 | 종류:집업..." 같은 문자열에서 첫 번째 발견되는 숫자만 추출
+    numbers = re.findall(r'\d+', str(val))
+    return int(numbers[0]) if numbers else None
+
+def get_item_info_by_id(clothing_id):
+    if not clothing_id or clothing_id == "null" or clothing_id == "":
+        return None
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT clothes_id,
+                   category,
+                   style,
+                   color,
+                   processed_image,
+                   name
+            FROM clothes
+            WHERE clothes_id = ?
+        """, (clothing_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        # 💡 [핵심 해결] 역슬래시(\)를 웹 URL용 슬래시(/)로 바꾸고 호스팅 Full URL 생성
+        raw_img = row[4]
+        img_path = None
+
+        if raw_img:
+            # 1. 역슬래시 -> 슬래시 변환
+            clean_path = str(raw_img).replace("\\", "/").strip()
+            
+            # 2. 이미 http로 시작하는 URL이 아니면 풀 URL로 가공
+            if not clean_path.startswith("http"):
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
+                img_path = f"{SERVER_URL}{clean_path}"
+            else:
+                img_path = clean_path
+
+        return {
+            "id": row[0],
+            "category": row[1],
+            "style": row[2],
+            "color": row[3],
+            "image": img_path,      # 🌟 슬래시(/) 변환된 full URL
+            "img_url": img_path,    # 🌟 img_url 키도 동일하게 제공 (호환성 보장)
+            "name": row[5]
+        }
+
+    except Exception as e:
+        print(f"❌ 옷 정보 조회 오류: {e}")
+        return None
+
+    except Exception as e:
+        print(
+            "합성 오류:",
+            e,
+        )
+        return None
+
+def get_musinsa_item_by_id(musinsa_id):
+    if not musinsa_id or musinsa_id == "null" or musinsa_id == "":
+        return None
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        clean_musinsa_id = str(musinsa_id).replace("SHOP_", "").replace("ID:", "").strip()
+
+        # 🌟 DB 테이블에 실제 정의된 컬럼 순서대로 일치시킵니다.
+        # row[0]: musinsa_id
+        # row[1]: name
+        # row[2]: category
+        # row[3]: style
+        # row[4]: color
+        # row[5]: price
+        # row[6]: img_url
+        # row[7]: no_bg_url
+        # row[8]: product_url
+        cursor.execute("""
+            SELECT musinsa_id,
+                   name,
+                   category,
+                   style,
+                   color,
+                   price,
+                   img_url,
+                   no_bg_url,
+                   product_url
+            FROM musinsa_clothes
+            WHERE musinsa_id = ? OR musinsa_id = ?
+        """, (clean_musinsa_id, f"SHOP_{clean_musinsa_id}"))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        print(f"🔍 [무신사 DB Raw Row ({clean_musinsa_id})]:", row)
+
+        if not row:
+            return None
+
+        # 1. 각 필드를 정확한 인덱스로 매칭
+        m_id = row[0]
+        name = row[1]
+        category = row[2]
+        style = row[3]
+        color = row[4]
+        price = row[5] or 0
+        
+        # 2. 원본 이미지 URL (row[6])
+        raw_img_link = str(row[6]).replace("\\", "/").strip() if row[6] else None
+
+        # 3. 누끼 이미지 파일 경로 (row[7])
+        no_bg_file = row[7]
+        no_bg_link = None
+
+        if no_bg_file:
+            no_bg_clean = str(no_bg_file).replace("\\", "/").strip()
+            if not no_bg_clean.startswith("http"):
+                if not no_bg_clean.startswith("/"):
+                    no_bg_clean = "/" + no_bg_clean
+                server_base = globals().get('SERVER_URL', 'http://172.20.10.3:5001') # 서버 IP
+                no_bg_link = f"{server_base}{no_bg_clean}"
+            else:
+                no_bg_link = no_bg_clean
+
+        # 4. 앱 대표 표출 이미지 (누끼 이미지 최우선 적용)
+        final_img = no_bg_link if no_bg_link else raw_img_link
+
+        # 5. 구매 링크 (row[8])
+        buy_link = str(row[8]).strip() if row[8] else None
+
+        return {
+            "id": f"SHOP_{m_id}",
+            "name": name,
+            "category": category,
+            "style": style,
+            "color": color,
+            "price": price,
+            "img_url": raw_img_link,     # 원본 URL
+            "no_bg_url": no_bg_link,     # 누끼 이미지 풀 URL (http://...)
+            "image": final_img,          # 프론트 표출 대표 이미지
+            "product_url": buy_link,     # 무신사 구매 링크
+            "buy_url": buy_link,
+            "is_shop": True
+        }
+
+    except Exception as e:
+        print(f"❌ 무신사 옷 정보 조회 오류: {e}")
+        return None
+
+# ID가 MY_인지 SHOP_인지 판별하여 맞춤 조회를 해주는 통합 함수
+def get_any_item_info(item_code):
+    if not item_code or item_code == "null" or item_code == "":
+        return None
+    
+    item_str = str(item_code).strip()
+    
+    # "SHOP_12" 또는 "ID:SHOP_12" 형태로 넘어온 경우 ➔ 무신사 DB 조회
+    if "SHOP_" in item_str:
+        # "SHOP_218" -> "218" 추출
+        clean_id = item_str.replace("ID:", "").replace("SHOP_", "").strip()
+        return get_musinsa_item_by_id(clean_id)
+    
+    # "MY_4" 또는 "4" 또는 "ID:4" 형태 ➔ 내 옷장 DB 조회
+    else:
+        clean_id = extract_id(item_str) if 'extract_id' in globals() else item_str.replace("ID:", "").replace("MY_", "").strip()
+        info = get_item_info_by_id(clean_id)
+        if info:
+            info["is_shop"] = False  # 내 옷장 옷
+            info["product_url"] = None
+            info["buy_url"] = None
+        return info
+
+from datetime import datetime
+import sqlite3
+
+# -------------------------------------------------------------
+# 📅 오늘 일정 조회 보조 함수 (chat_api 위에 위치해야 함)
+# -------------------------------------------------------------
+def get_today_schedules_text():
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    conn = sqlite3.connect('codi_v2.db')
+    cursor = conn.cursor()
+    
+    try:
+        # schedules 테이블이 없을 경우 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute(
+            "SELECT title, tpo_tag FROM schedules WHERE event_date = ?", 
+            (today_str,)
+        )
+        rows = cursor.fetchall()
+    except Exception as e:
+        print(f"⚠️ 일정 DB 조회 중 에러: {e}")
+        rows = []
+    finally:
+        conn.close()
+
+    if not rows:
+        return None
+
+    schedules = [f"{r[0]} ({r[1]})" for r in rows]
+    return ", ".join(schedules)
+
+# 🌟 [여기 추가!] 채팅방 첫 진입 시 첫 인사 메시지 반환 API
+# -------------------------------------------------------------
+@app.route('/chat/welcome', methods=['GET'])
+def get_chat_welcome():
+    today_schedule = get_today_schedules_text()
+
+    if today_schedule:
+        # 오늘 일정이 있을 때
+        welcome_msg = f"안녕하세요! 오늘은 [{today_schedule}] 일정이 있으시네요. 오늘 일정에 딱 맞는 멋진 TPO 코디를 추천해 드릴까요?"
+    else:
+        # 오늘 일정이 없을 때 (기존)
+        welcome_msg = "안녕하세요! 오늘 어떤 코디를 추천해 드릴까요?"
+
+    return jsonify({
+        "success": True,
+        "message": welcome_msg
+    })
+
+# -------------------------------------------------------------
+# 💬 채팅 API
+# -------------------------------------------------------------
+
+    
+# 사용자와 챗봇이 대화하고 옷 정보/사진 주소까지 연동해주는 라우트
 @app.route('/chat', methods=['POST'])
 def chat_api():
     user_data = request.json
     user_message = user_data.get('message', '')
+
+    # 🌟 프론트엔드가 보낸 방 번호를 읽어옵니다. (없으면 default)
+    room_id = user_data.get('room_id', 'default')
+
+    # ✅ 자체 SQLite 스케줄러에서 오늘 일정 조회 (일정이 없으면 None 반환)
+    today_schedule = get_today_schedules_text()
+
+# 오늘 일정 유무에 따라 프롬프트 컨텍스트 생성
+    if today_schedule:
+        schedule_context = f"사용자에게 오늘 '{today_schedule}' 일정이 있습니다. 응답 message 첫 문장에 '오늘 {today_schedule} 일정이 있으시네요!'를 언급하며 어울리는 TPO 코디를 추천하세요."
+    else:
+        schedule_context = "오늘 특별히 등록된 일정이 없습니다. 사용자의 요청에 맞춘 데일리 코디를 추천하세요."
     
-    # 챗봇(Groq)에게 메시지를 던져 JSON 포맷의 대답 문자열을 받음
-    ai_string_response = chat_with_closet(user_message)
-    print(f"\n🤖 [서버 내부 로그] AI가 반환한 JSON: {ai_string_response}\n")
-    
+    # 챗봇(Groq) 함수를 호출하여 JSON 포맷의 대답 문자열 수신
     try:
-        # 문자열을 파이썬 딕셔너리로 변환
-        ai_json = json.loads(ai_string_response)
+        ai_string_response = chat_with_closet(user_message, room_id)
+        print(f"\n🤖 [서버 내부 로그] AI가 반환한 원본: {ai_string_response}\n")
+
+        # 1. Groq 응답 검증 및 마크다운 정제 (```json ... ``` 제거)
+        # 1. Groq 응답 검증 및 마크다운 정제 (```json ... ``` 및 사족 텍스트 제거)
+        if not ai_string_response or not str(ai_string_response).strip():
+            print("❌ [오류] Groq API로부터 빈 응답이 들어왔습니다.")
+            return jsonify({"success": False, "message": "AI 응답을 받아오지 못했습니다. (빈 응답)"}), 500
+
+        cleaned_response = str(ai_string_response).strip()
+
+        # ```json ... ``` 마크다운 지우기
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response.split("```")[1]
+            if cleaned_response.startswith("json"):
+                cleaned_response = cleaned_response[4:]
+        cleaned_response = cleaned_response.strip()
+
+        # 🌟 [핵심 1] 앞뒤 붙은 대화 문장 잘라내고 { ... } 영역만 순수 추출
+        start_idx = cleaned_response.find('{')
+        end_idx = cleaned_response.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            cleaned_response = cleaned_response[start_idx:end_idx+1]
+
+        # 🌟 [핵심 2] 역슬래시(\") 탈출 문자 및 개행 제거
+        cleaned_response = cleaned_response.replace('\\"', '"').replace('\\n', ' ')
+
+        # 2. 안전한 JSON 파싱 (이중 파싱 및 예외 보정)
+        try:
+            ai_json = json.loads(cleaned_response)
+            
+            # 만약 한번 파싱했는데도 str 타입이면 한 번 더 파싱
+            if isinstance(ai_json, str):
+                ai_json = json.loads(ai_json)
+
+        except Exception as parse_err:
+            print(f"⚠️ [JSON 파싱 실패 -> 자동 보정 적용] 원본 문장: {ai_string_response}")
+            ai_json = {
+                "message": str(ai_string_response),
+                "top": None,
+                "bottom": None,
+                "outer": None,
+                "dress": None,
+                "shoes": None,
+                "bag": None,
+                "accessory": None
+            }
+
+        # 🌟 [핵심 3] "null" 이나 "None" 같은 문자열을 파이썬 None 타입으로 자동 변환
+        if isinstance(ai_json, dict):
+            for key, val in ai_json.items():
+                if str(val).strip().lower() in ["null", "none", "", "undefined"]:
+                    ai_json[key] = None
+
+        # 3. 아이템 정보 조회 (ai_json이 dict 타입인지 보장)
+        if not isinstance(ai_json, dict):
+            ai_json = {}
+
+        # 💡 [핵심] get_any_item_info를 통해 내 옷장(MY_)과 무신사(SHOP_)를 자동 판별하여 정보 조회
+        top_info = get_any_item_info(ai_json.get('top'))
+        bottom_info = get_any_item_info(ai_json.get('bottom'))
+        outer_info = get_any_item_info(ai_json.get('outer'))
+        dress_info = get_any_item_info(ai_json.get('dress'))
+        shoes_info = get_any_item_info(ai_json.get('shoes'))
+        bag_info = get_any_item_info(ai_json.get('bag'))
+        accessory_info = get_any_item_info(ai_json.get('accessory'))
         
-        # 🌟 AI가 고른 ID 번호들을 쏙쏙 뽑아내기
-        top_id = ai_json.get('top')
-        bottom_id = ai_json.get('bottom')
-        outer_id = ai_json.get('outer')
-        shoes_id = ai_json.get('shoes')
-        bag_id = ai_json.get('bag')
-        accessory_id = ai_json.get('accessory')
+        # 터미널 디버깅용 출력
+        print(json.dumps({
+            "top": top_info,
+            "bottom": bottom_info,
+            "outer": outer_info,
+            "dress": dress_info,
+            "shoes": shoes_info,
+            "bag": bag_info,
+            "accessory": accessory_info
+        }, indent=2, ensure_ascii=False))
         
-        # 🌟 도우미 함수를 거쳐 숫자 ID를 '진짜 사진 주소'로 교환!
-        top_src = get_image_path_by_id(top_id)
-        bottom_src = get_image_path_by_id(bottom_id)
-        outer_src = get_image_path_by_id(outer_id)
-        shoes_src = get_image_path_by_id(shoes_id)
-        bag_src = get_image_path_by_id(bag_id)
-        accessory_src = get_image_path_by_id(accessory_id)
-        
-        # 프론트엔드가 받아서 요리하기 좋게 최종 패키징해서 응답
+        # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
+        def resolve_image_url(info):
+            if not info:
+                return None
+                
+            # 🌟 1순위: no_bg_url 최우선 탐색! (없을 때만 image, img_url 순으로 탐색)
+            image_val = info.get("no_bg_url") or info.get("image") or info.get("img_url") or info.get("image_url")
+            if not image_val:
+                return None
+
+            image_str = str(image_val).replace("\\", "/").strip()  # 역슬래시(\) -> 웹 슬래시(/) 변환
+
+            # http/https로 시작하는 풀 URL인 경우 (no_bg_url 또는 무신사 원본)
+            if image_str.startswith("http"):
+                return image_str
+            
+            # 상대 경로(/static/output/...)인 경우 서버 호스팅 주소 붙이기
+            if image_str.startswith("/static") or image_str.startswith("/output"):
+                server_base = globals().get('SERVER_URL', 'http://172.20.10.3:5001')
+                if not image_str.startswith("/"):
+                    image_str = "/" + image_str
+                return f"{server_base}{image_str}"
+
+            # 내 옷장 이미지 (상대 경로인 경우 호스팅 경로 처리)
+            return get_image_path_by_id(extract_id(info.get("id")))
+
+        # 프론트엔드가 image, img_url, no_bg_url 어떤 필드로 읽어도 누끼가 뜨도록 정제
+        all_items = {
+            "top": top_info,
+            "bottom": bottom_info,
+            "outer": outer_info,
+            "dress": dress_info,
+            "shoes": shoes_info,
+            "bag": bag_info,
+            "accessory": accessory_info
+        }
+
+        for cat, item in all_items.items():
+            if item and isinstance(item, dict):
+                # 🌟 누끼 URL 최우선 적용
+                final_url = resolve_image_url(item)
+                
+                item["image"] = final_url
+                item["no_bg_url"] = final_url  # 프론트에 no_bg_url 키 보존
+
+                # 무신사 구매 링크 키 통일 (nan 방지)
+                raw_link = item.get("product_url") or item.get("buy_url")
+                if raw_link and str(raw_link) != "nan":
+                    item["buy_url"] = raw_link
+                    item["product_url"] = raw_link
+                else:
+                    item["buy_url"] = None
+                    item["product_url"] = None
+
+        # 프론트엔드로 반환할 최종 데이터
         return jsonify({
             "success": True,
-            "message": ai_json.get('message'),  # 말풍선 텍스트 ("원하시는 스타일이 있나요?" 등)
+            "message": ai_json.get('message'),
+
+            # 개별 이미지 주소 맵
             "images": {
-                "top": top_src,
-                "bottom": bottom_src,
-                "outer": outer_src,
-                "shoes": shoes_src,
-                "bag": bag_src,
-                "accessory": accessory_src
-            }
+                "top": resolve_image_url(top_info),
+                "bottom": resolve_image_url(bottom_info),
+                "outer": resolve_image_url(outer_info),
+                "dress": resolve_image_url(dress_info),
+                "shoes": resolve_image_url(shoes_info),
+                "bag": resolve_image_url(bag_info),
+                "accessory": resolve_image_url(accessory_info)
+            },
+
+            # 상세 옷 정보 맵
+            "items": all_items
         })
-        
+
     except Exception as e:
+        print(f"❌ /chat 라우트 에러 발생: {e}")
         return jsonify({
             "success": False,
             "message": f"코디 생성 처리 중 오류가 발생했습니다. (에러: {e})",
-            "images": {}
+            "images": {},
+            "items": {}
         })
+
+
+# =========================================================================
+# 👗 5. 옷장(Closet) 및 코디 저장 관리 API
+# =========================================================================
+
+# 전체 옷장 목록 조회 API
+@app.route('/api/closet', methods=['GET'])
+def get_closet():
+    print("★★★★★ get_closet 실행 ★★★★★")
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT clothes_id,
+                processed_image,
+                category,
+                style,
+                color,
+                name,
+                analyzed_at
+            FROM clothes
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+
+
+        from flask import request
+        result = []
+        for row in rows:
+            image_path=row[1].replace("\\","/")
+            result.append({
+                "id": row[0],
+                "image": request.host_url+image_path,
+                "category": row[2],
+                "style": row[3],
+                "color": row[4],
+                "name":row[5],
+                "analyzed_at": row[6]
+            })
+     
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 🗑 옷 삭제 API
+@app.route('/api/closet/<int:item_id>', methods=['DELETE'])
+def delete_closet_item(item_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "DELETE FROM clothes WHERE clothes_id = ?",
+            (item_id,)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "삭제 완료"
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+# ✏️ 옷 정보 수정 API
+@app.route(
+    '/api/closet/<int:item_id>',
+    methods=['PUT']
+)
+def update_closet_item(item_id):
+    try:
+        data = request.json
+
+        conn = sqlite3.connect(
+            'codi_v2.db'
+        )
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE clothes
+            SET category = ?,
+                style = ?,
+                color = ?,
+                name = COALESCE(?, name)
+            WHERE clothes_id = ?
+            """,
+            (
+                data['category'],
+                data['style'],
+                data['color'],
+                data.get('name'),
+                item_id,
+            ),
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "수정 완료"
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 사용자의 콜렉션(폴더) 목록 조회 API
+@app.route('/get-collections', methods=['GET'])
+def get_collections():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                collection_id,
+                collection_name,
+                created_at,
+                display_order
+            FROM collections
+            WHERE user_id = ?
+            ORDER BY display_order
+        """, ("su_ryong",))
+
+        rows = cursor.fetchall()
+
+        collection_list = []
+
+        for row in rows:
+            collection_id = row[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM saved_outfits
+                WHERE collection_id = ?
+            """, (collection_id,))
+
+            count = cursor.fetchone()[0]
+
+            # 최근 저장된 코디 2개의 대표 이미지 가져오기
+            cursor.execute("""
+                SELECT outfit_json
+                FROM saved_outfits
+                WHERE collection_id = ?
+                ORDER BY datetime(created_at) DESC
+                LIMIT 2
+            """, (collection_id,))
+
+            outfit_rows = cursor.fetchall()
+
+            preview_images = []
+
+            for outfit_row in outfit_rows:
+                try:
+                    outfit_data = json.loads(outfit_row[0])
+
+                    # AI가 생성한 아바타 착장 이미지 우선
+                    outfit_image = outfit_data.get("outfit_image")
+
+                    if outfit_image:
+                        preview_images.append(outfit_image)
+
+                except Exception as e:
+                    print("⚠️ 룩북 대표 이미지 파싱 실패:", e)
+
+
+            collection_list.append({
+                "id": row[0],
+                "name": row[1],
+                "created_at": row[2][:10].replace("-", "."),
+                "count": count,
+                "images": preview_images
+            })
+
+        conn.close()
+        
+        return jsonify({"success": True, "collections": collection_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 새 콜렉션(룩북) 생성 API
+@app.route('/create-collection', methods=['POST'])
+def create_collection():
+    data = request.json
+
+    user_id = "su_ryong"
+
+    collection_name = data.get("name", "").strip()
+
+    if not collection_name:
+        from datetime import datetime
+        collection_name = datetime.now().strftime("%Y.%m.%d")
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0) + 1
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        next_order = cursor.fetchone()[0]
+
+        cursor.execute("""
+            INSERT INTO collections (
+                user_id,
+                collection_name,
+                display_order
+            )
+            VALUES (?, ?, ?)
+        """, (
+            user_id,
+            collection_name,
+            next_order
+        ))
+
+        collection_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "collection": {
+                "id": collection_id,
+                "name": collection_name
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 사용자가 선택한 폴더에 추천 코디 세트를 저장하는 API
+@app.route('/save-outfit', methods=['POST'])
+def save_outfit():
+    data = request.json
+    user_id = 'su_ryong'  # 로그인 대용 임시 고정 유저
+    collection_ids = data.get("collection_ids", [])
+
+    title = data.get("title", "")
+    memo = data.get("memo", "")
+    outfit_json = json.dumps({
+        "outfit_image": data.get("outfit_image"),
+        "items": data.get("items", data.get("images", {}))
+    })
+
+    print("🔥 저장할 코디 이미지 ID:", data.get("images", {}))
+    print("🔥 저장할 코디 이미지 JSON:", outfit_json)
+    
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        saved_ids = []
+
+        for collection_id in collection_ids:
+            cursor.execute("""
+                INSERT INTO saved_outfits (
+                    user_id,
+                    collection_id,
+                    title,
+                    memo,
+                    outfit_json,
+                    is_favorite
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                collection_id,
+                title,
+                memo,
+                outfit_json,
+                1
+            ))
+
+            saved_ids.append(cursor.lastrowid)
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "saved_ids": saved_ids, "message": "코디가 성공적으로 저장되었습니다!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"저장 실패. 에러: {e}"}), 500
+
+# 즐겨찾기 룩북 조회(없으면 자동 생성)
+@app.route('/favorite-collection', methods=['GET'])
+def favorite_collection():
+
+    user_id = "su_ryong"
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        # 이미 즐겨찾기 룩북이 있는지 확인
+        cursor.execute("""
+            SELECT collection_id
+            FROM collections
+            WHERE user_id = ?
+            AND collection_name = ?
+        """, (
+            user_id,
+            "즐겨찾기",
+        ))
+
+        row = cursor.fetchone()
+
+        if row:
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "collection_id": row[0]
+            })
+
+        # 없으면 새로 생성
+        cursor.execute("""
+            SELECT COALESCE(MAX(display_order), 0)
+            FROM collections
+            WHERE user_id = ?
+        """, (user_id,))
+
+        display_order = cursor.fetchone()[0] + 1
+
+        cursor.execute("""
+            INSERT INTO collections(
+                user_id,
+                collection_name,
+                display_order
+            )
+            VALUES (?, ?, ?)
+        """, (
+            user_id,
+            "즐겨찾기",
+            display_order,
+        ))
+
+        collection_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "collection_id": collection_id
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 사용자가 선택한 콜렉션 안의 저장된 코디 목록 조회 API
+@app.route('/collection/<int:collection_id>', methods=['GET'])
+def get_collection_outfits(collection_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        # 즐겨찾기 폴더인지 확인
+        cursor.execute("""
+            SELECT collection_name
+            FROM collections
+            WHERE collection_id = ?
+        """, (collection_id,))
+
+        collection = cursor.fetchone()
+
+        is_favorite_collection = (
+            collection and collection[0] == "즐겨찾기"
+        )
+
+        if is_favorite_collection:
+
+            cursor.execute("""
+            SELECT
+                saved_id,
+                title,
+                memo,
+                created_at,
+                outfit_json
+            FROM saved_outfits
+            WHERE collection_id = ?
+            AND is_favorite = 1
+            """, (collection_id,))
+
+        else:
+
+            cursor.execute("""
+            SELECT
+                saved_id,
+                title,
+                memo,
+                created_at,
+                outfit_json
+            FROM saved_outfits
+            WHERE collection_id = ?
+            """, (collection_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        outfit_list = []
+
+        for row in rows:
+
+            data = json.loads(row[4])
+
+            # =====================================================
+            # 새 저장 방식
+            # items = [아이템1, 아이템2, ...]
+            # =====================================================
+            saved_items = data.get("items", [])
+
+            if isinstance(saved_items, list):
+
+                items = saved_items[:6]
+
+            # =====================================================
+            # 기존 저장 방식
+            # items = {top, bottom, outer, ...}
+            # =====================================================
+            elif isinstance(saved_items, dict):
+
+                items = []
+
+                for category in [
+                    "accessory",
+                    "outer",
+                    "top",
+                    "bottom",
+                    "dress",
+                    "shoes",
+                    "bag",
+                ]:
+
+                    item_id = saved_items.get(category)
+
+                    if item_id:
+
+                        item_info = get_any_item_info(item_id)
+
+                        if item_info:
+                            items.append(item_info)
+
+                items = items[:6]
+
+            else:
+
+                items = []
+
+            outfit_list.append({
+                "saved_id": row[0],
+                "title": row[1],
+                "memo": row[2],
+                "created_at": row[3],
+                "outfit_image": data.get("outfit_image"),
+                "items": items,
+            })
+
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "outfits": outfit_list
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 저장된 코디 하나를 삭제하는 API
+@app.route('/saved-outfit/<int:saved_id>', methods=['DELETE'])
+def delete_saved_outfit(saved_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "저장된 코디가 삭제되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 저장된 코디 하나를 수정하는 API
+@app.route('/saved-outfit/<int:saved_id>', methods=['PUT'])
+def update_saved_outfit(saved_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE saved_outfits
+            SET title = ?, memo = ?
+            WHERE saved_id = ?
+        """, (
+            data.get("title"),
+            data.get("memo"),
+            saved_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 콜렉션(폴더) 하나를 삭제하는 API
+@app.route('/collection/<int:collection_id>', methods=['DELETE'])
+def delete_collection(collection_id):
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        # 먼저 해당 콜렉션 안의 저장된 코디 삭제
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE collection_id = ?
+        """, (collection_id,))
+
+        # 콜렉션 삭제
+        cursor.execute("""
+            DELETE FROM collections
+            WHERE collection_id = ?
+        """, (collection_id,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "message": "콜렉션이 삭제되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 순서 저장 API
+@app.route('/update-collection-order', methods=['POST'])
+def update_collection_order():
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        for item in data["collections"]:
+            cursor.execute("""
+                UPDATE collections
+                SET display_order = ?
+                WHERE collection_id = ?
+            """, (
+                item["order"],
+                item["id"],
+            ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 콜렉션 이름 수정 API
+@app.route('/collection/<int:collection_id>', methods=['PUT'])
+def update_collection(collection_id):
+    data = request.json
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE collections
+            SET collection_name = ?
+            WHERE collection_id = ?
+        """, (
+            data.get("name"),
+            collection_id,
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 코디 삭제 API
+@app.route('/delete-saved-outfits', methods=['POST'])
+def delete_saved_outfits():
+    data = request.json
+
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM saved_outfits
+            WHERE saved_id IN ({placeholders})
+            """,
+            ids,
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 여러 옷 삭제 API
+@app.route('/delete-clothes', methods=['POST'])
+def delete_multiple_clothes():
+    data = request.json
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "success": False,
+            "error": "No ids"
+        }), 400
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        placeholders = ",".join(["?"] * len(ids))
+
+        cursor.execute(
+            f"""
+            DELETE FROM clothes
+            WHERE clothes_id IN ({placeholders})
+            """,
+            ids
+        )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 즐겨찾기 토글 API
+@app.route('/toggle-favorite', methods=['POST'])
+def toggle_favorite():
+
+    data = request.json
+
+    saved_id = data.get("saved_id")
+    title = data.get("title", "")
+    memo = data.get("memo", "")
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        # 이미 즐겨찾기인지 확인
+        cursor.execute("""
+            SELECT favorite_id
+            FROM favorite_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        row = cursor.fetchone()
+
+        # ❤️ 저장
+        if row is None:
+
+            cursor.execute("""
+                INSERT INTO favorite_outfits(
+                    saved_id,
+                    title,
+                    memo
+                )
+                VALUES (?, ?, ?)
+            """, (
+                saved_id,
+                title,
+                memo,
+            ))
+
+            cursor.execute("""
+                UPDATE saved_outfits
+                SET is_favorite = 1
+                WHERE saved_id = ?
+            """, (saved_id,))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "favorite": 1
+            })
+
+        # 🤍 취소
+        else:
+
+            cursor.execute("""
+                DELETE FROM favorite_outfits
+                WHERE saved_id = ?
+            """, (saved_id,))
+
+            cursor.execute("""
+                UPDATE saved_outfits
+                SET is_favorite = 0
+                WHERE saved_id = ?
+            """, (saved_id,))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "success": True,
+                "favorite": 0
+            })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# 즐겨찾기 코디 목록 조회 API
+@app.route('/favorite-outfits', methods=['GET'])
+def favorite_outfits():
+
+    try:
+        conn = sqlite3.connect("codi_v2.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                s.saved_id,
+                f.title,
+                f.memo,
+                s.created_at,
+                s.outfit_json
+            FROM favorite_outfits f
+            JOIN saved_outfits s
+            ON f.saved_id = s.saved_id
+            ORDER BY f.created_at DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        outfits = []
+
+        for row in rows:
+
+            images = json.loads(row[4])
+
+            outfits.append({
+                "saved_id": row[0],
+                "title": row[1],
+                "memo": row[2],
+                "created_at": row[3],
+
+                "outfit_image": images.get("outfit_image"),
+
+                "items": {
+                    "top": {
+                        "image": images.get("images", {}).get("top"),
+                        "name": "상의",
+                    } if images.get("images", {}).get("top") else None,
+
+                    "bottom": {
+                        "image": images.get("images", {}).get("bottom"),
+                        "name": "하의",
+                    } if images.get("images", {}).get("bottom") else None,
+
+                    "dress": {
+                        "image": images.get("images", {}).get("dress"),
+                        "name": "원피스",
+                    } if images.get("images", {}).get("dress") else None,
+
+                    "outer": {
+                        "image": images.get("images", {}).get("outer"),
+                        "name": "아우터",
+                    } if images.get("images", {}).get("outer") else None,
+
+                    "shoes": {
+                        "image": images.get("images", {}).get("shoes"),
+                        "name": "신발",
+                    } if images.get("images", {}).get("shoes") else None,
+
+                    "bag": {
+                        "image": images.get("images", {}).get("bag"),
+                        "name": "가방",
+                    } if images.get("images", {}).get("bag") else None,
+
+                    "accessory": {
+                        "image": images.get("images", {}).get("accessory"),
+                        "name": "액세서리",
+                    } if images.get("images", {}).get("accessory") else None,
+                }
+            })
+
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "outfits": outfits
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+# 저장된 코디의 룩북(컬렉션) 정보를 수정하는 API
+@app.route('/update-outfit-collections', methods=['POST'])
+def update_outfit_collections():
+    data = request.json
+
+    saved_id = data.get("saved_id")
+    collection_ids = data.get("collection_ids", [])
+
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+
+        # 기존 코디 정보 가져오기
+        cursor.execute("""
+            SELECT
+                user_id,
+                title,
+                memo,
+                outfit_json,
+                is_favorite
+            FROM saved_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({
+                "success": False,
+                "message": "코디를 찾을 수 없습니다."
+            }), 404
+
+        user_id, title, memo, outfit_json, is_favorite = row
+
+        # 기존 코디 삭제
+        cursor.execute("""
+            DELETE FROM saved_outfits
+            WHERE saved_id = ?
+        """, (saved_id,))
+
+        new_ids = []
+
+        # 선택한 룩북들에 다시 저장
+        for collection_id in collection_ids:
+
+            cursor.execute("""
+                INSERT INTO saved_outfits (
+                    user_id,
+                    collection_id,
+                    title,
+                    memo,
+                    outfit_json,
+                    is_favorite
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                collection_id,
+                title,
+                memo,
+                outfit_json,
+                is_favorite
+            ))
+
+            new_ids.append(cursor.lastrowid)
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "saved_ids": new_ids
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# =========================================================================
+# 💬 6. 채팅방(Chat Room) 관리 API
+# =========================================================================
+
+# 새 채팅방 생성 API
+@app.route('/chat-room/create', methods=['POST'])
+def create_chat_room():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO chat_rooms (user_id, room_title) VALUES ('su_ryong', '새 채팅')")
+        new_room_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "room_id": new_room_id, "title": "새 채팅"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 채팅방 상단 고정/해제 토글 API
+@app.route('/chat-room/pin', methods=['POST'])
+def pin_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE chat_rooms SET is_pinned = NOT is_pinned WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "고정 상태가 변경되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 채팅방 이름 변경 API
+@app.route('/chat-room/rename', methods=['POST'])
+def rename_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    new_title = data.get('title') # 프론트가 보낸 새 이름
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE chat_rooms SET room_title = ? WHERE room_id = ?", (new_title, room_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "이름이 변경되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 채팅방 아카이브 보관 API
+@app.route('/chat-room/archive', methods=['POST'])
+def archive_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE chat_rooms SET is_archived = 1 WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "아카이브에 보관되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# 채팅방 삭제 API
+@app.route('/chat-room/delete', methods=['POST'])
+def delete_chat_room():
+    data = request.json
+    room_id = data.get('room_id')
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM chat_rooms WHERE room_id = ?", (room_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "채팅방이 삭제되었습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# =========================================================================
+# 👤 AI 아바타 생성 API
+# =========================================================================
+
+# 사용자의 얼굴 사진을 base_avatar에 합성하여 AI 아바타를 생성하는 API
+@app.route("/generate-avatar", methods=["POST"])
+def generate_avatar():
+
+    if "photo" not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "photo is required"
+        }), 400
+
+    try:
+
+        photo = request.files["photo"]
+
+        print(photo.filename)
+
+        avatar_path = generate_avatar_image(photo)
+
+        avatar_url = f"{SERVER_URL}/{avatar_path}"
+
+        return jsonify({
+            "success": True,
+            "avatar_path": avatar_path,
+            "avatar_url": avatar_url
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# 생성된 AI 아바타에 추천 코디를 적용하여 최종 이미지를 생성하는 API
+@app.route("/generate-outfit", methods=["POST"])
+def generate_outfit():
+    print("🔥 /generate-outfit 호출됨")
+
+    data = request.get_json() or {}
+
+    avatar_path = data.get("avatar_path")
+    prompt = data.get("prompt")
+    item_images = data.get("item_images", [])
+
+    if not avatar_path:
+        return jsonify({
+            "success": False,
+            "error": "avatar_path 없음"
+        }), 400
+
+    if not prompt:
+        return jsonify({
+            "success": False,
+            "error": "prompt 없음"
+        }), 400
+
+    try:
+        result = generate_outfit_image(
+            avatar_path=avatar_path,
+            prompt=prompt,
+            item_images=item_images,
+        )
+
+        image_url = f"{SERVER_URL}/{result}"
+
+        return jsonify({
+            "success": True,
+            "image_path": result,
+            "image_url": image_url,
+        })
+
+    except Exception as e:
+        import traceback
+
+        print("❌ 옷 입히기 오류:", e)
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# =========================================================================
+# 📅 Google Calendar 연동 API
+# =========================================================================
+# 1️⃣ [추가] 웹뷰 연동 시작점: 프론트엔드 웹뷰가 이 URL을 호출하면 구글 로그인 페이지로 이동
+@app.route('/api/calendar/login', methods=['GET'])
+def calendar_login():
+    return redirect(gc.get_google_auth_url())
+
+
+# 2️⃣ [추가] 구글 OAuth 콜백: 구글 로그인 완료 후 토큰을 받아 DB에 저장
+@app.route('/api/calendar/authS/callback', methods=['GET'])
+def calendar_callback():
+    code = request.args.get('code')
+    error = request.args.get('error')
+
+    if error or not code:
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: false }));
+            }
+        </script><h3>로그인이 취소되었습니다. 창을 닫아주세요.</h3></body></html>
+        """
+
+    try:
+        # 구글 서버에서 토큰 교환
+        tokens = gc.exchange_code_for_tokens(code)
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token")
+        expires_in = tokens.get("expires_in", 3600)
+
+        # 사용자 이메일 가져온 뒤 DB 저장
+        email = gc.get_user_email(access_token)
+        gc.save_account(access_token, refresh_token, expires_in, email)
+
+        return """
+        <html><body><script>
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'CALENDAR_AUTH', success: true }));
+            }
+        </script><h3>구글 캘린더 연동 성공! 이 창을 닫아주세요.</h3></body></html>
+        """
+    except Exception as e:
+        return f"<h3>연동 실패: {str(e)}</h3>"
+
+# 1) 캘린더 연결 상태 확인 API
+@app.route('/api/calendar/status', methods=['GET'])
+def calendar_status():
+    account = gcal.get_account()
+    return jsonify({
+        "connected": account is not None,
+        "email": account.get("email") if account else None,
+    })
+
+
+# 2) 구글 OAuth 로그인 인증 토큰 교환 API
+@app.route('/api/calendar/auth/google', methods=['POST'])
+def calendar_auth_google():
+    data = request.json or {}
+    code = data.get('code')
+    redirect_uri = data.get('redirectUri')
+    code_verifier = data.get('codeVerifier')
+
+    if not code or not redirect_uri:
+        return jsonify({"success": False, "error": "code와 redirectUri가 필요합니다."}), 400
+
+    try:
+        tokens = gcal.exchange_code_for_tokens(code, redirect_uri, code_verifier)
+        email = gcal.get_user_email(tokens['access_token'])
+        gcal.save_account(
+            access_token=tokens['access_token'],
+            refresh_token=tokens.get('refresh_token'),
+            expires_in=tokens.get('expires_in'),
+            email=email,
+        )
+        return jsonify({"success": True, "email": email})
+    except gcal.GoogleCalendarError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": f"캘린더 연결 중 오류가 발생했습니다: {e}"}), 500
+
+
+# 3) 캘린더 연동 해제 API
+@app.route('/api/calendar/disconnect', methods=['POST'])
+def calendar_disconnect():
+    try:
+        gcal.delete_account()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# 4) 기간별 일정 목록 가져오기 API
+@app.route('/api/calendar/events', methods=['GET'])
+def calendar_events():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    if not start or not end:
+        return jsonify({"success": False, "error": "start와 end가 필요합니다."}), 400
+
+    try:
+        access_token = gcal.get_valid_access_token()
+    except gcal.GoogleCalendarError:
+        access_token = None
+
+    if not access_token:
+        return jsonify({"success": False, "error": "캘린더가 연결되어 있지 않습니다."}), 401
+
+    try:
+        events = gcal.list_events(access_token, start, end)
+        return jsonify({"success": True, "events": events})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"일정을 불러오지 못했습니다: {e}"}), 502
+
+
+# 5) 일정 기반 코디 전용 단독 요청 API
+@app.route('/api/chat/schedule-outfit', methods=['POST'])
+def chat_schedule_outfit():
+    data = request.json or {}
+    message = data.get('message', '')
+    room_id = data.get('room_id', 'default')
+
+    if not message:
+        return jsonify({"success": False, "error": "message가 필요합니다."}), 400
+
+    result = generate_schedule_outfit_response(message, room_id)
+    result["success"] = True
+    return jsonify(result)
+
+
+import sqlite3
+from flask import request, jsonify
+
+@app.route('/schedule', methods=['POST'])
+def add_schedule():
+    try:
+        data = request.json or {}
+        title = data.get('title')
+        event_date = data.get('event_date')
+        tpo_tag = data.get('tpo_tag', 'Casual')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "제목과 날짜를 지정해 주세요."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # schedules 테이블이 없을 경우를 대비해 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute(
+            "INSERT INTO schedules (title, event_date, tpo_tag) VALUES (?, ?, ?)",
+            (title, event_date, tpo_tag)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 성공적으로 등록되었습니다."})
+
+    except Exception as e:
+        print(f"❌ /schedule 라우트 에러: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# -------------------------------------------------------------
+# 📅 등록된 모든 일정 목록 조회 API (캘린더 복원용)
+# -------------------------------------------------------------
+@app.route('/schedules', methods=['GET'])
+def get_all_schedules():
+    try:
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 테이블이 없는 경우 자동 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                tpo_tag TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 저장된 모든 일정 가져오기
+        cursor.execute("SELECT title, event_date, tpo_tag FROM schedules")
+        rows = cursor.fetchall()
+        conn.close()
+
+        schedules_list = [
+            {"title": r[0], "event_date": r[1], "tpo_tag": r[2]} 
+            for r in rows
+        ]
+
+        return jsonify({"success": True, "schedules": schedules_list})
+
+    except Exception as e:
+        print(f"❌ 전체 일정 조회 에러: {e}")
+        return jsonify({"success": False, "schedules": []}), 500
+
+# -------------------------------------------------------------
+# 🗑️ 일정 삭제 API
+# -------------------------------------------------------------
+@app.route('/schedule', methods=['DELETE'])
+def delete_schedule():
+    try:
+        data = request.json
+        title = data.get('title')
+        event_date = data.get('event_date')
+
+        if not title or not event_date:
+            return jsonify({"success": False, "message": "삭제할 일정을 찾을 수 없습니다."}), 400
+
+        conn = sqlite3.connect('codi_v2.db')
+        cursor = conn.cursor()
+        
+        # 해당 제목과 날짜가 일치하는 일정 삭제
+        cursor.execute(
+            "DELETE FROM schedules WHERE title = ? AND event_date = ?",
+            (title, event_date)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "일정이 삭제되었습니다."})
+    except Exception as e:
+        print(f"❌ 일정 삭제 에러: {e}")
+        return jsonify({"success": False, "message": "삭제 중 오류 발생"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
