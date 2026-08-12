@@ -60,6 +60,7 @@ export default function LookbookDetailPage() {
         );
 
         if (res.data.success) {
+          console.log('🔥 룩북 코디 데이터:', res.data.outfits);
           setOutfits(res.data.outfits);
         }
 
@@ -304,12 +305,23 @@ export default function LookbookDetailPage() {
       )}
 
       <View style={styles.image}>
-        <Ionicons
-          name="shirt-outline"
-          size={46}
-          color="#BDBDBD"
-          style={{ alignSelf: 'center', marginTop: '50%' }}
-        />
+        {item.outfit_image ? (
+          <Image
+            source={{ uri: item.outfit_image }}
+            style={styles.outfitImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <Ionicons
+            name="shirt-outline"
+            size={46}
+            color="#BDBDBD"
+            style={{
+              alignSelf: 'center',
+              marginTop: '50%',
+            }}
+          />
+        )}
       </View>
 
       <Text
@@ -608,5 +620,11 @@ cancelButton: {
 cancelButtonText: {
   color: '#666',
   fontWeight: '600',
+},
+
+outfitImage: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 20,
 },
 });

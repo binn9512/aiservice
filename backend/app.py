@@ -774,12 +774,39 @@ def get_collections():
 
             count = cursor.fetchone()[0]
 
+            # 최근 저장된 코디 2개의 대표 이미지 가져오기
+            cursor.execute("""
+                SELECT outfit_json
+                FROM saved_outfits
+                WHERE collection_id = ?
+                ORDER BY datetime(created_at) DESC
+                LIMIT 2
+            """, (collection_id,))
+
+            outfit_rows = cursor.fetchall()
+
+            preview_images = []
+
+            for outfit_row in outfit_rows:
+                try:
+                    outfit_data = json.loads(outfit_row[0])
+
+                    # AI가 생성한 아바타 착장 이미지 우선
+                    outfit_image = outfit_data.get("outfit_image")
+
+                    if outfit_image:
+                        preview_images.append(outfit_image)
+
+                except Exception as e:
+                    print("⚠️ 룩북 대표 이미지 파싱 실패:", e)
+
+
             collection_list.append({
                 "id": row[0],
                 "name": row[1],
                 "created_at": row[2][:10].replace("-", "."),
                 "count": count,
-                "images": []
+                "images": preview_images
             })
 
         conn.close()
@@ -856,7 +883,7 @@ def save_outfit():
     memo = data.get("memo", "")
     outfit_json = json.dumps({
         "outfit_image": data.get("outfit_image"),
-        "images": data.get("images", {})
+        "items": data.get("items", data.get("images", {}))
     })
 
     print("🔥 저장할 코디 이미지 ID:", data.get("images", {}))
@@ -1020,50 +1047,58 @@ def get_collection_outfits(collection_id):
 
         for row in rows:
 
-            images = json.loads(row[4])
+            data = json.loads(row[4])
+
+            # =====================================================
+            # 새 저장 방식
+            # items = [아이템1, 아이템2, ...]
+            # =====================================================
+            saved_items = data.get("items", [])
+
+            if isinstance(saved_items, list):
+
+                items = saved_items[:6]
+
+            # =====================================================
+            # 기존 저장 방식
+            # items = {top, bottom, outer, ...}
+            # =====================================================
+            elif isinstance(saved_items, dict):
+
+                items = []
+
+                for category in [
+                    "accessory",
+                    "outer",
+                    "top",
+                    "bottom",
+                    "dress",
+                    "shoes",
+                    "bag",
+                ]:
+
+                    item_id = saved_items.get(category)
+
+                    if item_id:
+
+                        item_info = get_any_item_info(item_id)
+
+                        if item_info:
+                            items.append(item_info)
+
+                items = items[:6]
+
+            else:
+
+                items = []
 
             outfit_list.append({
                 "saved_id": row[0],
                 "title": row[1],
                 "memo": row[2],
                 "created_at": row[3],
-                "outfit_image": images.get("outfit_image"),
-                "items": {
-                    "top": {
-                        "image": images.get("images", {}).get("top"),
-                        "name": "상의",
-                    } if images.get("images", {}).get("top") else None,
-
-                    "bottom": {
-                        "image": images.get("images", {}).get("bottom"),
-                        "name": "하의",
-                    } if images.get("images", {}).get("bottom") else None,
-
-                    "dress": {
-                        "image": images.get("images", {}).get("dress"),
-                        "name": "원피스",
-                    } if images.get("images", {}).get("dress") else None,
-
-                    "outer": {
-                        "image": images.get("images", {}).get("outer"),
-                        "name": "아우터",
-                    } if images.get("images", {}).get("outer") else None,
-
-                    "shoes": {
-                        "image": images.get("images", {}).get("shoes"),
-                        "name": "신발",
-                    } if images.get("images", {}).get("shoes") else None,
-
-                    "bag": {
-                        "image": images.get("images", {}).get("bag"),
-                        "name": "가방",
-                    } if images.get("images", {}).get("bag") else None,
-
-                    "accessory": {
-                        "image": images.get("images", {}).get("accessory"),
-                        "name": "액세서리",
-                    } if images.get("images", {}).get("accessory") else None,
-                }
+                "outfit_image": data.get("outfit_image"),
+                "items": items,
             })
 
         conn.close()
@@ -1351,6 +1386,12 @@ def toggle_favorite():
                 memo,
             ))
 
+            cursor.execute("""
+                UPDATE saved_outfits
+                SET is_favorite = 1
+                WHERE saved_id = ?
+            """, (saved_id,))
+
             conn.commit()
             conn.close()
 
@@ -1364,6 +1405,12 @@ def toggle_favorite():
 
             cursor.execute("""
                 DELETE FROM favorite_outfits
+                WHERE saved_id = ?
+            """, (saved_id,))
+
+            cursor.execute("""
+                UPDATE saved_outfits
+                SET is_favorite = 0
                 WHERE saved_id = ?
             """, (saved_id,))
 
@@ -1415,14 +1462,44 @@ def favorite_outfits():
                 "title": row[1],
                 "memo": row[2],
                 "created_at": row[3],
+
+                "outfit_image": images.get("outfit_image"),
+
                 "items": {
-                    "top": get_any_item_info(images.get("top")),
-                    "bottom": get_any_item_info(images.get("bottom")),
-                    "dress": get_any_item_info(images.get("dress")),
-                    "outer": get_any_item_info(images.get("outer")),
-                    "shoes": get_any_item_info(images.get("shoes")),
-                    "bag": get_any_item_info(images.get("bag")),
-                    "accessory": get_any_item_info(images.get("accessory")),
+                    "top": {
+                        "image": images.get("images", {}).get("top"),
+                        "name": "상의",
+                    } if images.get("images", {}).get("top") else None,
+
+                    "bottom": {
+                        "image": images.get("images", {}).get("bottom"),
+                        "name": "하의",
+                    } if images.get("images", {}).get("bottom") else None,
+
+                    "dress": {
+                        "image": images.get("images", {}).get("dress"),
+                        "name": "원피스",
+                    } if images.get("images", {}).get("dress") else None,
+
+                    "outer": {
+                        "image": images.get("images", {}).get("outer"),
+                        "name": "아우터",
+                    } if images.get("images", {}).get("outer") else None,
+
+                    "shoes": {
+                        "image": images.get("images", {}).get("shoes"),
+                        "name": "신발",
+                    } if images.get("images", {}).get("shoes") else None,
+
+                    "bag": {
+                        "image": images.get("images", {}).get("bag"),
+                        "name": "가방",
+                    } if images.get("images", {}).get("bag") else None,
+
+                    "accessory": {
+                        "image": images.get("images", {}).get("accessory"),
+                        "name": "액세서리",
+                    } if images.get("images", {}).get("accessory") else None,
                 }
             })
 
@@ -1678,7 +1755,10 @@ def generate_outfit():
         })
 
     except Exception as e:
+        import traceback
+
         print("❌ 옷 입히기 오류:", e)
+        traceback.print_exc()
 
         return jsonify({
             "success": False,

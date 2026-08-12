@@ -68,7 +68,7 @@ export default function LookbookGrid({ isEditMode }: any) {
             id: String(item.id),
             title: item.name,
             count: item.count,
-            images: [],
+            images: item.images || [],
           })),
         ]);
       }

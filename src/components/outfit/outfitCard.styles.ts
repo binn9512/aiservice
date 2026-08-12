@@ -47,19 +47,21 @@ export default StyleSheet.create({
   },
 
   itemButton: {
-    height: 65,
+    minHeight: 58,
 
     backgroundColor: '#ffffff',
 
     borderRadius: 12,
 
-    paddingHorizontal: 18,
+    paddingHorizontal: 10,
 
-    marginBottom: 8,
+    marginBottom: 6,
 
     flexDirection: 'row',
 
     alignItems: 'center',
+
+    overflow: 'hidden',
   },
 
   itemName: {

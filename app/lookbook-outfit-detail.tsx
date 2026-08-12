@@ -360,7 +360,78 @@ export default function LookbookOutfitDetailScreen() {
   const items = useMemo(() => {
     if (!current) return [];
 
-    return Object.values(current.items || {}).filter(Boolean);
+    // 새 저장 방식: items가 배열
+    if (Array.isArray(current.items)) {
+      const order = [
+        '모자',
+        '머플러/스카프',
+        '벨트',
+        '안경/선글라스',
+        '주얼리',
+
+        '코트',
+        '패딩',
+        '자켓',
+        '가디건',
+        '집업',
+
+        '반팔 티셔츠',
+        '긴팔 티셔츠',
+        '셔츠/블라우스',
+        '니트/스웨터',
+        '맨투맨/후드',
+        '슬리브리스',
+
+        '데님 팬츠',
+        '슬랙스',
+        '반바지',
+        '트레이닝 팬츠',
+        '스커트',
+
+        '원피스',
+
+        '운동화/스니커즈',
+        '구두/로퍼',
+        '힐',
+        '부츠',
+        '샌들/슬리퍼',
+
+        '백팩',
+        '숄더백/토트백',
+        '크로스백',
+        '클러치',
+      ];
+
+      return [...current.items]
+        .sort((a: any, b: any) => {
+          const aIndex = order.indexOf(a.category);
+          const bIndex = order.indexOf(b.category);
+
+          return (
+            (aIndex === -1 ? 999 : aIndex) -
+            (bIndex === -1 ? 999 : bIndex)
+          );
+        })
+        .slice(0, 6);
+    }
+
+    // 기존에 저장된 코디도 깨지지 않게 기존 구조 지원
+    const oldOrder = [
+      'accessory',
+      'outer',
+      'top',
+      'bottom',
+      'dress',
+      'shoes',
+      'bag',
+    ];
+
+    return oldOrder
+      .map(category => ({
+        ...(current.items?.[category] || {}),
+        category,
+      }))
+      .filter(item => item.image);
   }, [current]);
 
   if (!current) return null;

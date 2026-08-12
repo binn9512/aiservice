@@ -120,7 +120,9 @@ def chat_with_closet(user_msg, room_id="default"):
 
     # 2. 💡 [추가] 무신사 쇼핑몰 데이터 가져오기!
     musinsa_clothes = get_musinsa_clothes_text()
-  
+
+    print("🔥 SHOP 데이터 길이:", len(musinsa_clothes))
+    print("🔥 SHOP 데이터 앞부분:", musinsa_clothes[:2000])
     
     system_prompt = f"""
     너는 한국의 2030 세대 패션 스타일링 전문가야.

@@ -69,6 +69,40 @@ def generate_outfit_image(avatar_path, prompt, item_images=None):
                     with open(item_path, "wb") as f:
                         f.write(item_response.content)
 
+                    # =====================================================
+                    # FLUX.2 reference image 용량 제한 대응
+                    # 상품 이미지를 최대 1024px 기준으로 축소
+                    # =====================================================
+                    try:
+                        with Image.open(item_path) as img:
+                            img = img.convert("RGB")
+
+                            max_size = 1024
+
+                            img.thumbnail(
+                                (max_size, max_size),
+                                Image.Resampling.LANCZOS
+                            )
+
+                            img.save(
+                                item_path,
+                                format="JPEG",
+                                quality=85,
+                                optimize=True
+                            )
+
+                        print(
+                            "✅ 옷 이미지 리사이즈 완료:",
+                            item.get("name"),
+                            Image.open(item_path).size
+                        )
+
+                    except Exception as resize_error:
+                        print(
+                            "⚠️ 옷 이미지 리사이즈 실패:",
+                            resize_error
+                        )
+
                     temp_items.append({
                         "name": item.get("name", ""),
                         "category": item.get("category", ""),
@@ -136,6 +170,47 @@ def generate_outfit_image(avatar_path, prompt, item_images=None):
         )
 
         # =====================================================
+        # 🔥 FLUX.2 Pro 이미지 용량 제한 대응
+        # 모든 reference 이미지를 최대 1MP 정도로 축소
+        # =====================================================
+        def resize_for_flux(image_path, max_mp=1.0):
+            img = Image.open(image_path).convert("RGB")
+
+            width, height = img.size
+            current_mp = (width * height) / 1_000_000
+
+            if current_mp <= max_mp:
+                return image_path
+
+            scale = (max_mp / current_mp) ** 0.5
+
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+
+            resized = img.resize(
+                (new_width, new_height),
+                Image.Resampling.LANCZOS
+            )
+
+            resized_path = (
+                OUTPUT_DIR /
+                f"flux_ref_{uuid.uuid4().hex}.jpg"
+            )
+
+            resized.save(
+                resized_path,
+                format="JPEG",
+                quality=90
+            )
+
+            print(
+                f"🔥 FLUX 이미지 축소: "
+                f"{width}x{height} → {new_width}x{new_height}"
+            )
+
+            return resized_path
+
+        # =====================================================
         # 4. Replicate reference images 구성
         #
         # image 1 = 아바타
@@ -147,16 +222,37 @@ def generate_outfit_image(avatar_path, prompt, item_images=None):
         # =====================================================
         reference_images = []
 
-        # 아바타
-        reference_images.append(
-            open(avatar_file, "rb")
+        # =====================================================
+        # 아바타 → FLUX용으로 축소
+        # =====================================================
+        flux_avatar = resize_for_flux(
+            avatar_file,
+            max_mp=1.0
         )
 
-        # 옷 이미지
-        for item in temp_items[:7]:
-            reference_images.append(
-                open(item["path"], "rb")
+        reference_images.append(
+            open(flux_avatar, "rb")
+        )
+
+        # =====================================================
+        # 옷 이미지 → FLUX용으로 축소
+        # 최대 6개
+        # =====================================================
+        for item in temp_items[:6]:
+
+            flux_item = resize_for_flux(
+                item["path"],
+                max_mp=1.0
             )
+
+            reference_images.append(
+                open(flux_item, "rb")
+            )
+
+        print(
+            f"🔥 Replicate reference image 개수: "
+            f"{len(reference_images)}"
+        )
 
         print(
             f"🔥 Replicate reference image 개수: "
@@ -169,7 +265,7 @@ def generate_outfit_image(avatar_path, prompt, item_images=None):
         clothing_description = "\n".join(
             f"Image {index + 2}: "
             f"{item['category']} - {item['name']}"
-            for index, item in enumerate(temp_items[:7])
+            for index, item in enumerate(temp_items[:6])
         )
 
         final_prompt = f"""
@@ -217,7 +313,7 @@ IMPORTANT:
             input={
                 "prompt": final_prompt,
                 "input_images": reference_images,
-                "resolution": "2 MP",
+                "resolution": "1 MP",
                 "aspect_ratio": "match_input_image",
                 "output_format": "png",
                 "output_quality": 100,
@@ -275,7 +371,7 @@ IMPORTANT:
         with open(save_path, "wb") as f:
             f.write(response.content)
 
-                # =====================================================
+        # =====================================================
         # 9. 원본 아바타 얼굴만 자연스럽게 복원
         # =====================================================
         print("🔥 원본 얼굴 자연스럽게 복원 시작")

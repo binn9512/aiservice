@@ -46,7 +46,53 @@ const OutfitCard = ({
 }: Props) => {
   const router = useRouter();
 
-  const itemList = outfit?.items || [];
+  const rawItemList = outfit?.items || [];
+
+  // 코디 아이템 표시 순서
+  const CATEGORY_ORDER = [
+    '모자',
+    '아우터',
+    '코트',
+    '패딩',
+    '자켓',
+    '가디건',
+    '집업',
+    '원피스',
+    '반팔 티셔츠',
+    '긴팔 티셔츠',
+    '셔츠/블라우스',
+    '니트/스웨터',
+    '맨투맨/후드',
+    '슬리브리스',
+    '데님 팬츠',
+    '슬랙스',
+    '반바지',
+    '트레이닝 팬츠',
+    '스커트',
+    '운동화/스니커즈',
+    '구두/로퍼',
+    '힐',
+    '부츠',
+    '샌들/슬리퍼',
+    '백팩',
+    '숄더백/토트백',
+    '크로스백',
+    '클러치',
+  ];
+
+  // 머리 → 발 순서로 정렬 후 최대 6개
+  const itemList = [...rawItemList]
+    .filter(item => item)
+    .sort((a, b) => {
+      const aIndex = CATEGORY_ORDER.indexOf(a?.category);
+      const bIndex = CATEGORY_ORDER.indexOf(b?.category);
+
+      return (
+        (aIndex === -1 ? 999 : aIndex) -
+        (bIndex === -1 ? 999 : bIndex)
+      );
+    })
+    .slice(0, 6);
 
   if (!outfit || itemList.length === 0) {
     return null;
@@ -140,9 +186,9 @@ const OutfitCard = ({
                   return { uri: 'https://via.placeholder.com/100?text=No+Image' };
                 })()}
                 style={{
-                  width: 60,
-                  height: 60,
-                  marginRight: 12,
+                  width: 48,
+                  height: 48,
+                  marginRight: 8,
                   borderRadius: 6,
                   backgroundColor: '#FFFFFF',
                 }}

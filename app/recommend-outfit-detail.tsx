@@ -147,73 +147,25 @@ export default function RecommendOutfitDetailScreen() {
 
     console.log('🔥 현재 추천 아이템:', current.items);
 
-    const images = {
-      top: current.items.find(item =>
-        [
-          '반팔 티셔츠',
-          '긴팔 티셔츠',
-          '셔츠/블라우스',
-          '니트/스웨터',
-          '맨투맨/후드',
-          '슬리브리스',
-        ].includes(item.name)
-      )?.image ?? null,
+    const savedItems = current.items
+      .slice(0, 6)
+      .map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        type: item.type,
+        image: item.image,
+        img_url: (item as any).img_url,
+        image_url: (item as any).image_url,
+        no_bg_url: (item as any).no_bg_url,
+        brand: (item as any).brand,
+        price: (item as any).price,
+        is_shop: (item as any).is_shop,
+        product_url: (item as any).product_url,
+        buy_url: (item as any).buy_url,
+      }));
 
-      bottom: current.items.find(item =>
-        [
-          '데님 팬츠',
-          '슬랙스',
-          '반바지',
-          '트레이닝 팬츠',
-          '스커트',
-        ].includes(item.name)
-      )?.image ?? null,
-
-      dress: current.items.find(item =>
-        ['원피스'].includes(item.name)
-      )?.image ?? null,
-
-      outer: current.items.find(item =>
-        [
-          '코트',
-          '패딩',
-          '자켓',
-          '가디건',
-          '집업',
-        ].includes(item.name)
-      )?.image ?? null,
-
-      shoes: current.items.find(item =>
-        [
-          '운동화/스니커즈',
-          '구두/로퍼',
-          '힐',
-          '부츠',
-          '샌들/슬리퍼',
-        ].includes(item.name)
-      )?.image ?? null,
-
-      bag: current.items.find(item =>
-        [
-          '백팩',
-          '숄더백/토트백',
-          '크로스백',
-          '클러치',
-        ].includes(item.name)
-      )?.image ?? null,
-
-      accessory: current.items.find(item =>
-        [
-          '모자',
-          '머플러/스카프',
-          '벨트',
-          '안경/선글라스',
-          '주얼리',
-        ].includes(item.name)
-      )?.image ?? null,
-    };
-
-    console.log('🔥 저장할 images:', images);
+    console.log('🔥 룩북 저장 items:', savedItems);
 
     try {
       const today = new Date();
@@ -222,7 +174,6 @@ export default function RecommendOutfitDetailScreen() {
         `${API_BASE_URL}/save-outfit`,
         {
           collection_ids: selectedCollections.map(c => c.id),
-
           title:
             lookbookTitle.trim() ||
             '새 코디',
@@ -230,7 +181,7 @@ export default function RecommendOutfitDetailScreen() {
 
           outfit_image: tryOnImage,
 
-          images,
+          items: savedItems,
         }
       );
 
@@ -341,6 +292,32 @@ export default function RecommendOutfitDetailScreen() {
     );
   }
 
+  const normalizeImageUrl = (value: string) => {
+    if (!value) return '';
+
+    let url = String(value).trim();
+
+    // [텍스트](URL) 형태 제거
+    const markdownMatch = url.match(/\]\((https?:\/\/[^)]+)\)/);
+
+    if (markdownMatch) {
+      url = markdownMatch[1];
+    }
+
+    // [URL] 형태만 남은 경우
+    if (url.startsWith('[') && url.endsWith(']')) {
+      url = url.slice(1, -1);
+    }
+
+    // 이미 완전한 URL이면 그대로
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // /output/... 형태
+    return `${API_BASE_URL}/${url.replace(/^\/+/, '')}`;
+  };
+
   const generateTryOn = async () => {
     if (tryOnStarted.current) {
       return;
@@ -352,6 +329,10 @@ export default function RecommendOutfitDetailScreen() {
       const avatarPath = await AsyncStorage.getItem(
         'USER_AVATAR_IMAGE'
       );
+
+      const cleanAvatarPath = avatarPath
+        ? normalizeImageUrl(avatarPath)
+        : '';
 
       if (!avatarPath || !current) {
         console.log('❌ 아바타 또는 코디 정보가 없음');
@@ -375,13 +356,17 @@ export default function RecommendOutfitDetailScreen() {
       const response = await axios.post(
         `${API_BASE_URL}/generate-outfit`,
         {
-          avatar_path: avatarPath,
+          avatar_path: cleanAvatarPath,
           prompt: prompt,
-          item_images: current.items.map(item => ({
-            name: item.name,
-            category: item.category,
-            image: item.image,
-          })),
+          item_images: current.items
+            .filter(Boolean)
+            .slice(0, 6)
+            .map(item => ({
+              name: item.name || '추천 아이템',
+              category: item.category || '의류',
+              image: item.image,
+            }))
+            .filter(item => item.image),
         }
       );
 
@@ -401,11 +386,63 @@ export default function RecommendOutfitDetailScreen() {
     }
   };
 
+  const CATEGORY_ORDER = [
+    '모자',
+
+    '코트',
+    '패딩',
+    '자켓',
+    '가디건',
+    '집업',
+
+    '반팔 티셔츠',
+    '긴팔 티셔츠',
+    '셔츠/블라우스',
+    '니트/스웨터',
+    '맨투맨/후드',
+    '슬리브리스',
+
+    '데님 팬츠',
+    '슬랙스',
+    '반바지',
+    '트레이닝 팬츠',
+    '스커트',
+
+    '운동화/스니커즈',
+    '구두/로퍼',
+    '힐',
+    '부츠',
+    '샌들/슬리퍼',
+
+    '백팩',
+    '숄더백/토트백',
+    '크로스백',
+    '클러치',
+  ];
+
+  const displayItems = [...current.items]
+    .filter(Boolean)
+    .sort((a, b) => {
+      const aIndex = CATEGORY_ORDER.indexOf(a?.category);
+      const bIndex = CATEGORY_ORDER.indexOf(b?.category);
+
+      return (
+        (aIndex === -1 ? 999 : aIndex) -
+        (bIndex === -1 ? 999 : bIndex)
+      );
+    })
+    .slice(0, 6);
+
+
   useEffect(() => {
     if (!current) return;
 
     generateTryOn();
   }, []);
+
+  const itemCount = Math.min(current?.items?.length ?? 0, 6);
+
+  const itemRowHeight = 46;
 
   return (
     <>
@@ -436,7 +473,7 @@ export default function RecommendOutfitDetailScreen() {
             ) : faceImage ? (
               <Image
                 source={{
-                  uri: tryOnImage || `${API_BASE_URL}/${faceImage}`,
+                  uri: tryOnImage || normalizeImageUrl(faceImage),
                 }}
                 style={styles.modelImage}
                 resizeMode="cover"
@@ -453,23 +490,46 @@ export default function RecommendOutfitDetailScreen() {
           <View style={styles.itemBox}>
             <Text style={styles.itemTitle}>코디 아이템</Text>
             <View style={styles.itemsContainer}>
-              {current.items.map((item: OutfitItem, idx: number) => (
+              {current.items.slice(0, 6).map((item: OutfitItem, idx: number) => (
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={0.8}
-                  style={styles.itemRow}
+                  style={[
+                    styles.itemRow,
+                    {
+                      height: itemRowHeight,
+                    },
+                  ]}
                   onPress={() => {
                     setSelectedItem(item);
                     setModalVisible(true);
                   }}>
                   <Image
-                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
-                    style={styles.itemImage}
+                    source={
+                      typeof item.image === 'string'
+                        ? { uri: item.image }
+                        : item.image
+                    }
+                    style={[
+                      styles.itemImage,
+                      {
+                        width: itemRowHeight - 18,
+                        height: itemRowHeight - 18,
+                      },
+                    ]}
                     resizeMode="contain"
                   />
                   <View style={{ flex: 1 }}>
                     <Text numberOfLines={1} style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemSub}>{item.type === 'closet' ? '내 옷장' : '추천 상품'}</Text>
+                    <Text style={styles.itemSub}>
+                      {(
+                        item.type === 'closet' ||
+                        (typeof item.id === 'string' &&
+                          item.id.startsWith('MY_'))
+                      )
+                        ? '내 옷장'
+                        : '추천 상품'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -671,7 +731,7 @@ modelImage: {
 
   itemBox: { width: 160, height: 340, marginLeft: 18, borderWidth: 1, borderColor: '#F1D8E1', borderRadius: 20, padding: 12 },
   itemTitle: { color: '#FF5C8A', fontWeight: '700', fontSize: 15, marginBottom: 14, marginLeft: 2 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
   itemImage: { width: 46, height: 46, borderRadius: 10, marginRight: 10 },
   itemsContainer: { flex: 1, justifyContent: 'space-evenly' },
   itemName: { fontSize: 12, fontWeight: '600', color: '#111' },
