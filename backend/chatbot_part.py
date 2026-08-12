@@ -10,11 +10,6 @@ from weather import get_today_weather_and_outfit
 from datetime import datetime
 
 
-import sqlite3
-
-import sqlite3
-
-
 def get_musinsa_clothes_text():
     try:
         conn = sqlite3.connect('codi_v2.db')
@@ -47,7 +42,7 @@ def get_musinsa_clothes_text():
 load_dotenv() 
 
 # 1. 이제 안전하게 .env에서 키를 가져오므로 깃허브 보디가드가 통과시켜 줍니다!
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # 🧠 핵심 추가: AI의 기억력을 담당할 대화 기록 저장소
 # 1. 기존의 chat_history = [] 를 삭제하고, 방 여러 개를 담을 상자로 변경!
@@ -241,16 +236,13 @@ def chat_with_closet(user_msg, room_id="default"):
       "accessory": "null"
     }}
 """
-    
-    # 원래 있던 코드 위치 주변에 아래 print를 추가합니다.
-    print(f"🔥 지금 서버가 발송하는 API 키: {GROQ_API_KEY}")
 
     # ⭐ 주소가 Groq 전용으로 바뀌었습니다!
-    url = "https://api.groq.com/openai/v1/chat/completions"
+    url = "https://api.openai.com/v1/chat/completions"
     
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GROQ_API_KEY}"
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
     }
 
     # 🧠 3번 기능(기억력) 작동: 시스템 규칙 + 과거 대화 내용 + 이번 질문을 합쳐서 보냄
@@ -259,17 +251,15 @@ def chat_with_closet(user_msg, room_id="default"):
     messages_to_send.append({"role": "user", "content": user_msg}) # 현재 질문 추가
     
     data = {
-        "model": "llama-3.1-8b-instant",
-        "messages": messages_to_send,
-        "temperature": 0.3 # 설명을 해야 하니 창의성을 살짝(0.3) 올려줍니다.
-    }
+        "model": "gpt-5-mini",
+        "messages": messages_to_send,    }
     
     
     try:
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        print("🔥 GROQ 응답:", result)
+        print("🔥 OPENAI 응답:", result)
 
         if 'choices' not in result:
 

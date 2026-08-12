@@ -18,7 +18,6 @@ from flask import Flask, jsonify, request, redirect # 👈 redirect 추가 확�
 import google_calendar as gc # 👈 google_calendar 모듈 import
 
 from avatar_generator import generate_avatar_image
-from prompt_builder import build_prompt
 from outfit_generator import generate_outfit_image
 
 import os
@@ -529,45 +528,6 @@ def chat_api():
         shoes_info = get_any_item_info(ai_json.get('shoes'))
         bag_info = get_any_item_info(ai_json.get('bag'))
         accessory_info = get_any_item_info(ai_json.get('accessory'))
-
-        # AI 코디 이미지 생성
-        prompt = build_prompt(
-
-            dress=dress_info,
-
-            outer=outer_info,
-
-            top=top_info,
-
-            bottom=bottom_info,
-
-            shoes=shoes_info,
-
-            bag=bag_info,
-
-        )
-
-        avatar_path = user_data.get("avatar_path")
-
-        generated_image = None
-
-        if avatar_path:
-
-            try:
-
-                generated_image = generate_outfit_image(
-
-                    avatar_path=avatar_path,
-
-                    prompt=prompt,
-
-                )
-
-            except Exception as e:
-
-                print("AI Outfit Error")
-
-                print(e)
         
         # 터미널 디버깅용 출력
         print(json.dumps({
@@ -579,9 +539,6 @@ def chat_api():
             "bag": bag_info,
             "accessory": accessory_info
         }, indent=2, ensure_ascii=False))
-
-        # 합성 데모 이미지 생성 함수 호출
-        outfit_image = generated_image
         
         # 이미지 주소 추출 보조 도구 (무신사/내 옷장 이미지 및 역슬래시 통합 처리)
         def resolve_image_url(info):
@@ -641,16 +598,6 @@ def chat_api():
         return jsonify({
             "success": True,
             "message": ai_json.get('message'),
-            "outfit_image":
-
-            (
-                f"{SERVER_URL}/"
-                + outfit_image.replace("\\","/")
-            )
-
-            if outfit_image
-
-            else None,
 
             # 개별 이미지 주소 맵
             "images": {

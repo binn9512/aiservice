@@ -4,11 +4,11 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 import google_calendar as gcal
-from chatbot_part import GROQ_API_KEY, get_closet_data
+from chatbot_part import OPENAI_API_KEY, get_closet_data
 from weather import get_today_weather_and_outfit
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-8b-instant"
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_MODEL = "gpt-5-mini"
 KST = timezone(timedelta(hours=9))
 OPEN_WEATHER_KEY = "e62c1806eb7b13df76cbdfb855dff027"  # 기존 weather.py/app.py와 동일한 값
 
@@ -82,17 +82,16 @@ def resolve_date_range(text):
 def _call_groq(system_prompt, user_content):
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
     }
     data = {
-        "model": GROQ_MODEL,
+        "model": OPENAI_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ],
-        "temperature": 0.2,
     }
-    response = requests.post(GROQ_URL, headers=headers, json=data, timeout=15)
+    response = requests.post(OPENAI_URL, headers=headers, json=data, timeout=15)
     result = response.json()
     if "choices" not in result:
         raise RuntimeError(result.get("error", {}).get("message", "Groq 호출 실패"))
