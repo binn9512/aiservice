@@ -19,6 +19,7 @@ build/
 .dart_tool/
 .expo/
 
+
 # Database
 *.db
 
@@ -35,3 +36,6 @@ expo-env.d.ts
 
 # Local environment
 .env.local
+
+# AI generated images
+backend/static/output/
