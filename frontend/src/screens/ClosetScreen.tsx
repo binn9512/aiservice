@@ -23,7 +23,7 @@ import Ionicons
 from 'react-native-vector-icons/Ionicons';
 
 const API_BASE_URL =
-  'http://10.50.103.253:5001';
+  'http://127.0.0.1:5001';
 
 const categories = [
   '전체',
@@ -35,53 +35,14 @@ const categories = [
   '가방',
 ];
 
-const lookbooks = [
-  {
-    id: 'add',
-    type: 'add',
-  },
-
-  {
-    id: '1',
-    title: '데이트룩',
-    count: 16,
-    image:
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b',
-  },
-
-  {
-    id: '2',
-    title: '봄 코디',
-    count: 18,
-    image:
-      'https://images.unsplash.com/photo-1496747611176-843222e1e57c',
-  },
-
-  {
-    id: '3',
-    title: '출근룩',
-    count: 12,
-    image:
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f',
-  },
-
-  {
-    id: '4',
-    title: '데일리룩',
-    count: 24,
-    image:
-      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b',
-  },
-];
-
 const ClosetScreen = () => {
   const [selectedCategory,
     setSelectedCategory] =
     useState('전체');
 
-  const [selectedTab,
-    setSelectedTab] =
-    useState('옷');
+  const [sortOrder,
+  setSortOrder] =
+  useState('latest');
 
   const [clothesData,
     setClothesData] =
@@ -109,12 +70,16 @@ const ClosetScreen = () => {
       const data =
         await response.json();
 
+      const sortedData = [...data].sort(
+        (a, b) => b.id - a.id,
+      );
+
       setClothesData([
         {
           id: 'add',
           type: 'add',
         },
-        ...data,
+        ...sortedData,
       ]);
     } catch (error) {
       console.log(
@@ -188,16 +153,7 @@ const ClosetScreen = () => {
         `${API_BASE_URL}/analyze`,
         {
           method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-
-          body: JSON.stringify({
-            user_id: 'user1',
-            image_path: 'blouse.jpg',
-          }),
+          body: formData,
         },
       );
 
@@ -213,17 +169,15 @@ const ClosetScreen = () => {
       }
 
       if (data.success) {
-        setClothesData(prev => [
-          ...prev,
-          data.item,
-        ]);
+        await loadClosetItems();
+      }
 
         Alert.alert(
           '완료',
           '옷이 자동 분석되어 옷장에 추가되었습니다.',
         );
-      }
-    } catch (error: any) {
+    }
+    catch (error: any) {
       console.log(
         '사진 업로드 실패:',
         error,
@@ -238,13 +192,132 @@ const ClosetScreen = () => {
     }
   }
 
+  async function deleteClothes(
+  itemId: number,
+) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/closet/${itemId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        '삭제 실패',
+      );
+    }
+
+    await loadClosetItems();
+
+    Alert.alert(
+      '삭제 완료',
+      '옷이 삭제되었습니다.',
+    );
+  } catch (error) {
+    console.log(error);
+
+    Alert.alert(
+      '오류',
+      '삭제에 실패했습니다.',
+    );
+  }
+}
+
   const filteredData =
-    selectedCategory === '전체'
-      ? clothesData
-      : clothesData.filter(
-          item =>
-            item.category ===
-            selectedCategory,
+  selectedCategory === '전체'
+    ? clothesData
+    : clothesData.filter(item => {
+        if (item.type === 'add') {
+          return true;
+        }
+
+        if (selectedCategory === '상의') {
+          return [
+            '반팔 티셔츠',
+            '긴팔 티셔츠',
+            '셔츠/블라우스',
+            '니트/스웨터',
+            '맨투맨/후드',
+            '슬리브리스',
+          ].includes(item.category);
+        }
+
+        if (selectedCategory === '하의') {
+          return [
+            '데님 팬츠',
+            '슬랙스',
+            '반바지',
+            '트레이닝 팬츠',
+            '스커트',
+          ].includes(item.category);
+        }
+
+        if (selectedCategory === '원피스') {
+          return [
+            '원피스',
+          ].includes(item.category);
+        }
+
+        if (selectedCategory === '아우터') {
+          return [
+            '코트',
+            '패딩',
+            '자켓',
+            '가디건',
+            '집업',
+          ].includes(item.category);
+        }
+
+        if (selectedCategory === '신발') {
+          return [
+            '운동화/스니커즈',
+            '구두/로퍼',
+            '힐',
+            '부츠',
+            '샌들/슬리퍼',
+          ].includes(item.category);
+        }
+
+        if (selectedCategory === '가방') {
+          return [
+            '백팩',
+            '숄더백/토트백',
+            '크로스백',
+            '클러치',
+          ].includes(item.category);
+        }
+
+        return false;
+      });
+
+      const sortedData =
+        [...filteredData].sort(
+          (a, b) => {
+            if (
+              a.type === 'add'
+            )
+              return -1;
+
+            if (
+              b.type === 'add'
+            )
+              return 1;
+
+            if (
+              sortOrder ===
+              'latest'
+            ) {
+              return (
+                b.id - a.id
+              );
+            }
+
+            return (
+              a.id - b.id
+            );
+          },
         );
 
   const renderClothingItem =
@@ -276,7 +349,25 @@ const ClosetScreen = () => {
       return (
         <TouchableOpacity
           activeOpacity={0.8}
-          style={styles.itemCard}>
+          style={styles.itemCard}
+          onLongPress={() =>
+            Alert.alert(
+              '옷 삭제',
+              '이 옷을 삭제할까요?',
+              [
+                {
+                  text: '취소',
+                  style: 'cancel',
+                },
+                {
+                  text: '삭제',
+                  style: 'destructive',
+                  onPress: () =>
+                    deleteClothes(item.id),
+                },
+              ],
+            )
+          }>
           <Image
             source={{
               uri:
@@ -304,100 +395,63 @@ const ClosetScreen = () => {
             내 옷장
           </Text>
 
-          <View
-            style={
-              styles.headerIcons
-            }>
-            <TouchableOpacity
+            <View
               style={
-                styles.iconButton
+                styles.headerIcons
               }>
-              <Ionicons
-                name="search-outline"
-                size={24}
-                color="#111111"
-              />
-            </TouchableOpacity>
+              
+              {/* 검색 */}
+              <TouchableOpacity
+                style={
+                  styles.iconButton
+                }>
+                <Ionicons
+                  name="search-outline"
+                  size={24}
+                  color="#111111"
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={
-                styles.iconButton
-              }>
-              <Ionicons
-                name="options-outline"
-                size={24}
-                color="#111111"
-              />
-            </TouchableOpacity>
+              {/* 정렬 */}
+              <TouchableOpacity
+                style={
+                  styles.iconButton
+                }
+                onPress={() =>
+                  Alert.alert(
+                    '정렬',
+                    '정렬 방식을 선택하세요',
+                    [
+                      {
+                        text: '최신순',
+                        onPress: () =>
+                          setSortOrder(
+                            'latest',
+                          ),
+                      },
+                      {
+                        text: '오래된순',
+                        onPress: () =>
+                          setSortOrder(
+                            'oldest',
+                          ),
+                      },
+                      {
+                        text: '취소',
+                        style: 'cancel',
+                      },
+                    ],
+                  )
+                }>
+                <Ionicons
+                  name="options-outline"
+                  size={24}
+                  color="#111111"
+                />
+              </TouchableOpacity>
+
+</View>
           </View>
-        </View>
-
-        <View
-          style={
-            styles.topTabContainer
-          }>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() =>
-              setSelectedTab(
-                '옷',
-              )
-            }
-            style={
-              styles.topTabButton
-            }>
-            <Text
-              style={[
-                styles.topTabText,
-                selectedTab ===
-                  '옷' &&
-                  styles.activeTopTabText,
-              ]}>
-              옷
-            </Text>
-
-            {selectedTab ===
-              '옷' && (
-              <View
-                style={
-                  styles.activeLine
-                }
-              />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() =>
-              setSelectedTab(
-                '룩북',
-              )
-            }
-            style={
-              styles.topTabButton
-            }>
-            <Text
-              style={[
-                styles.topTabText,
-                selectedTab ===
-                  '룩북' &&
-                  styles.activeTopTabText,
-              ]}>
-              룩북
-            </Text>
-
-            {selectedTab ===
-              '룩북' && (
-              <View
-                style={
-                  styles.activeLine
-                }
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {selectedTab === '옷' ? (
           <>
             <View
               style={
@@ -509,7 +563,7 @@ const ClosetScreen = () => {
                 styles.gridContainer
               }>
               <FlatList
-                data={filteredData}
+                data={sortedData}
                 renderItem={
                   renderClothingItem
                 }
@@ -524,91 +578,6 @@ const ClosetScreen = () => {
               />
             </View>
           </>
-        ) : (
-          <View
-            style={
-              styles.lookbookContainer
-            }>
-            <View
-              style={
-                styles.lookbookGrid
-              }>
-              {lookbooks.map(
-                item => {
-                  if (
-                    item.type ===
-                    'add'
-                  ) {
-                    return (
-                      <TouchableOpacity
-                        key={
-                          item.id
-                        }
-                        style={
-                          styles.lookbookAddCard
-                        }>
-                        <Ionicons
-                          name="add"
-                          size={40}
-                          color="#FF5C8A"
-                        />
-
-                        <Text
-                          style={
-                            styles.lookbookAddText
-                          }>
-                          새 룩북 만들기
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  }
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={
-                        styles.lookbookCard
-                      }>
-                      <Image
-                        source={{
-                          uri:
-                            item.image,
-                        }}
-                        style={
-                          styles.lookbookImage
-                        }
-                      />
-
-                      <View
-                        style={
-                          styles.lookbookInfo
-                        }>
-                        <Text
-                          style={
-                            styles.lookbookTitle
-                          }>
-                          {
-                            item.title
-                          }
-                        </Text>
-
-                        <Text
-                          style={
-                            styles.lookbookCount
-                          }>
-                          {
-                            item.count
-                          }
-                          개
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                },
-              )}
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -649,55 +618,10 @@ const styles = StyleSheet.create({
     marginLeft: 14,
   },
 
-  topTabContainer: {
-    flexDirection: 'row',
-
-    marginBottom: 24,
-
-    borderBottomWidth: 1,
-    borderBottomColor:
-      '#F1F1F1',
-  },
-
-  topTabButton: {
-    flex: 1,
-
-    alignItems: 'center',
-    justifyContent:
-      'center',
-
-    paddingBottom: 12,
-
-    position: 'relative',
-  },
-
-  topTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#999999',
-  },
-
-  activeTopTabText: {
-    color: '#FF5C8A',
-    fontWeight: '700',
-  },
-
-  activeLine: {
-    position: 'absolute',
-    bottom: 0,
-
-    left: 0,
-    right: 0,
-
-    height: 2,
-
-    backgroundColor:
-      '#FF5C8A',
-  },
-
   summaryCard: {
     marginHorizontal: 20,
     marginBottom: 20,
+    marginTop: 5,
 
     backgroundColor:
       '#FFF3F7',
@@ -809,13 +733,15 @@ const styles = StyleSheet.create({
 
   columnWrapper: {
     justifyContent:
-      'space-between',
+      'flex-start',
 
     marginBottom: 10,
   },
 
   itemCard: {
     width: '31%',
+
+    marginRight: 10,
 
     aspectRatio: 1,
 
@@ -834,6 +760,9 @@ const styles = StyleSheet.create({
 
   addButton: {
     width: '31%',
+
+    marginRight: 10,
+    
     aspectRatio: 1,
 
     borderRadius: 18,
@@ -861,102 +790,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
 
     color: '#FF5C8A',
-  },
-
-  lookbookContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-  },
-
-  lookbookGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent:
-      'space-between',
-  },
-
-  lookbookAddCard: {
-    width: '48%',
-    aspectRatio: 1,
-
-    borderRadius: 18,
-
-    borderWidth: 1.5,
-
-    borderStyle: 'dashed',
-
-    borderColor:
-      '#FFB7CB',
-
-    backgroundColor:
-      '#FFF8FA',
-
-    justifyContent:
-      'center',
-
-    alignItems: 'center',
-
-    marginBottom: 18,
-  },
-
-  lookbookAddText: {
-    marginTop: 10,
-
-    fontSize: 14,
-    fontWeight: '600',
-
-    color: '#FF5C8A',
-  },
-
-  lookbookCard: {
-    width: '48%',
-    aspectRatio: 1,
-
-    borderRadius: 20,
-
-    backgroundColor:
-      '#FFFFFF',
-
-    overflow: 'hidden',
-
-    marginBottom: 18,
-
-    borderWidth: 1,
-
-    borderColor:
-      '#F3F3F3',
-  },
-
-  lookbookImage: {
-    width: '100%',
-    height: '70%',
-  },
-
-  lookbookInfo: {
-    flex: 1,
-
-    paddingHorizontal: 14,
-
-    paddingTop: 12,
-
-    paddingBottom: 12,
-
-    justifyContent:
-      'center',
-  },
-
-  lookbookTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-
-    color: '#111111',
-
-    marginTop: 4,
-    marginBottom: 4,
-  },
-
-  lookbookCount: {
-    fontSize: 13,
-    color: '#999999',
   },
 });

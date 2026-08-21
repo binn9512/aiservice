@@ -66,7 +66,7 @@ const QuickPromptSection = ({
               style={
                 styles.optionToggleText
               }>
-              🪽 빠른 추천
+              🪽 추천 룩
             </Text>
           </View>
 
@@ -201,7 +201,7 @@ const QuickPromptSection = ({
               style={
                 styles.promptTitle
               }>
-              빠른 추천 추가
+              추천 룩 추가
             </Text>
 
             <TextInput

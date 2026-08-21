@@ -41,13 +41,9 @@ import quickPrompts from '../data/quickPrompts';
 
 import styles from '../styles/recommend.styles';
 
-import {
-  analyzeImage,
-} from '../api/recommend';
-
 const RecommendScreen = () => {
   const route =
-  useRoute<RouteProp<any>>();
+    useRoute<RouteProp<any>>();
 
   const scrollRef =
     useRef<ScrollView>(null);
@@ -63,20 +59,14 @@ const RecommendScreen = () => {
   const [menuVisible, setMenuVisible] =
     useState(false);
 
-  const [useMyCloset, setUseMyCloset] =
-    useState(false);
-
   const [showOptions, setShowOptions] =
     useState(false);
 
   const [menuChatId, setMenuChatId] =
     useState<number | null>(null);
 
-  const [analysisResult, setAnalysisResult] =
-    useState<any>(null);
-
   const [inputText, setInputText] =
-  useState('');
+    useState('');
 
   const {
     currentChat,
@@ -96,20 +86,6 @@ const RecommendScreen = () => {
     setSelectedItem(item);
 
     setModalVisible(true);
-  };
-
-  const handleTest = async () => {
-    try {
-      const result =
-        await analyzeImage(
-          'user1',
-          'blouse.jpg',
-        );
-
-      setAnalysisResult(result);
-    } catch (error) {
-      console.log(error);
-    }
   };
 
   useEffect(() => {
@@ -168,8 +144,8 @@ const RecommendScreen = () => {
         }
         keyboardVerticalOffset={
           -38
-        }
-      >
+        }>
+
         {/* Header */}
         <RecommendHeader
           onPressMenu={() =>
@@ -229,12 +205,6 @@ const RecommendScreen = () => {
 
         {/* Bottom Section */}
         <RecommendBottomSection
-          useMyCloset={
-            useMyCloset
-          }
-          setUseMyCloset={
-            setUseMyCloset
-          }
           showOptions={
             showOptions
           }
@@ -253,8 +223,8 @@ const RecommendScreen = () => {
             onChangeText={
               setInputText
             }
-            onSend={text => {
-              handleSend(text);
+            onSend={async text => {
+              await handleSend(text);
 
               setInputText('');
             }}

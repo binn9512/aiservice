@@ -31,7 +31,9 @@ def remove_background(image_path: str, output_folder: str = "output"):
     output_image = remove(input_image)
 
     # 결과 저장 경로 설정 (확장자를 .png로 변경하여 투명도 유지)
-    output_filename = f"{input_path.stem}_no_bg.png"
+    from uuid import uuid4
+    
+    output_filename = f"{uuid4()}_no_bg.png"
     output_path = os.path.join(output_folder, output_filename)
 
     # Pillow를 사용하여 저장
@@ -59,6 +61,8 @@ def classify_clothing(image):
         "반바지": "a photo of shorts",
         "트레이닝 팬츠": "a photo of sweatpants or jogger pants",
         "스커트": "a photo of a skirt",
+        #원피스 
+        "원피스": "a photo of a dress",
         # 아우터
         "코트": "a photo of a long coat",
         "패딩": "a photo of a puffer jacket or down coat",
@@ -110,7 +114,12 @@ def classify_color(image):
         "네이비/블루": "a photo of navy or blue clothing",
         "데님": "a photo of blue denim texture clothing",
         "레드/핑크": "a photo of red or pink clothing",
-        "그린/카키": "a photo of green or khaki clothing"
+        "그린/카키": "a photo of green or khaki clothing",
+        "보라": "a photo of purple clothing",
+        "민트": "a photo of mint colored clothing",
+        "오렌지": "a photo of orange colored clothing",
+        "옐로우": "a photo of yellow colored clothing"
+
     }
     
     labels = list(colors.keys())
@@ -221,8 +230,7 @@ def send_to_backend2_api(image_path):
 
     # 3. 백엔드 2의 API 주소 (친구가 알려준 주소로 수정 필요)
     # 예: "http://127.0.0.1:8000/api/clothes"
-    api_url = "http://localhost:8000/items" 
-
+    api_url = "http://localhost:5001/analyze"
     try:
         # 데이터를 JSON 형태로 전송
         response = requests.post(api_url, json=cloth_data)
